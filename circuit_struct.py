@@ -45,7 +45,6 @@ def one_layer(qc:QuantumCircuit):
 class VCircuitConstructor:
     def __init__(self, n:int, ansatz:str='simple'):
         self.n = n
-
         if ansatz == 'simple':
             self.ansatz = simple_circ
         elif ansatz == 'one_layer':
