@@ -188,15 +188,7 @@ class Optimizer:
        
                 # Gather all prediction variations (original, +4π, and -4π)
                 predictions = np.vstack([prediction0, prediction0+ np.pi*2,prediction0 - np.pi*2])
-                # Extend sample_x with the new predictions
-                # f_1 = func(predictions[1])
-                # f_2 = func(predictions[2])
-                # # check if the y0,f_1,f_2 are the same
-                # allclose = np.allclose([y0,f_1,f_2], y0, rtol=1e-5)
-                # if allclose:
-                #     print(f'True True True: {y0}, {f_1}, {f_2}')
-                # else:
-                #     print(f'False False False: {y0}, {f_1}, {f_2}')
+
                 
                                 
                 sample_x = np.concatenate([sample_x, predictions], axis=0)
