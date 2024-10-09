@@ -126,7 +126,7 @@ class Optimizer:
         print(f'Training with the neural networks')
         # flush the output
         sys.stdout.flush()
-        # information of the models
+        # # train from the diffirent initial point
         # for i in range(len(sample_y)):
         # # train from the diffirent initial point
         #     for model in nn_models:
@@ -156,11 +156,14 @@ class Optimizer:
                 model.compile(optimizer='adam', 
                                 loss='mse',
                                 metrics=[], )
+                early_stop = trainer_model.EarlyStopping(monitor='loss', patience=10, verbose=verbose)
                 
                 fit_his = model.fit(sample_x,
                             sample_y,
                             epochs=classcial_epochs,
-                            verbose=verbose)
+                            batch_size=32,
+                            verbose=verbose,
+                            callbacks=[early_stop])
                 # print the training history
                 # print(fit_his.history)
 
@@ -206,7 +209,7 @@ class Optimizer:
                             optimal = [x0, y0]
                         sample_x = np.append(sample_x, [x0], axis=0)
                         sample_y = np.append(sample_y, y0)
-       
+    
         res.x = np.copy(optimal[0])
         res.fun = np.copy(optimal[1])
     

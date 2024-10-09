@@ -26,7 +26,7 @@ class trainer_model(Sequential):
    
     def back_minimize(self,
                  x0:np.ndarray=None,
-                 method = 'BFGS', verbose = 0):
+                 method = 'L-BFGS-B', verbose = 0):
         """
         After the model is trained, minimize the output by training the input.
         """
@@ -119,8 +119,8 @@ class trainer_model(Sequential):
 
     
 
-        result = minimize(to_minimize_with_grad, x, bounds=[(-np.pi*2,np.pi*2)]*len(x0), jac=True, method=method, tol=1e-12,
-                          options={'disp': None, 'maxls': 20, 'iprint': -1, 'eps': 1e-12,'ftol':1e-12, 'maxiter': 15000, 'maxcor': 10, 'maxfun': 15000}) 
+        result = minimize(to_minimize_with_grad, x, bounds=[(-np.pi*2,np.pi*2)]*len(x0), jac=True, method=method, tol=1e-10,
+                          options={'disp': None, 'maxls': 20, 'iprint': -1, 'eps': 1e-10,'ftol':1e-10, 'maxiter': 20000, 'maxcor': 10, 'maxfun': 20000}) 
         print("Optimization result:", result)
         print(f'Optimization converged: {result.success}')
 
