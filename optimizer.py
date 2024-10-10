@@ -5,7 +5,8 @@ from scipy.optimize import minimize, OptimizeResult
 from nn_trainer import trainer_model
 import numpy as np
 from sklearn.linear_model import LinearRegression
-  
+from keras.callbacks import EarlyStopping
+import itertools
 
 import sys
 
@@ -156,12 +157,12 @@ class Optimizer:
                 model.compile(optimizer='adam', 
                                 loss='mse',
                                 metrics=[], )
-                early_stop = trainer_model.EarlyStopping(monitor='loss', patience=10, verbose=verbose)
+                early_stop = EarlyStopping(monitor='loss', patience=5, verbose=verbose)
                 
                 fit_his = model.fit(sample_x,
                             sample_y,
                             epochs=classcial_epochs,
-                            batch_size=32,
+                            batch_size=64,
                             verbose=verbose,
                             callbacks=[early_stop])
                 # print the training history
@@ -188,15 +189,18 @@ class Optimizer:
                     optimal = [prediction0, y0]
                 # sample_x = np.append(sample_x, [prediction0], axis=0)
                 # sample_y = np.append(sample_y, y0)
-       
-                # Gather all prediction variations (original, +4π, and -4π)
-                predictions = np.vstack([prediction0, prediction0+ np.pi*2,prediction0 - np.pi*2])
 
-                
+                # Gather all prediction variations (original, +2π, and -2π)
+                offset =[0, np.pi*2, -np.pi*2]
+
+                predictions = np.array(list(itertools.product(*[[x + o for o in offset] for x in prediction0])))
+                # predictions = np.array(list(itertools.product(*[[x + o for o in offset] for x in prediction0])))
+                # predictions = np.vstack([prediction0, prediction0+ np.pi*2,prediction0 - np.pi*2])
                                 
                 sample_x = np.concatenate([sample_x, predictions], axis=0)
                 # Extend sample_y with the corresponding y0 values (same for each variation)
-                sample_y = np.concatenate([sample_y, [y0] * 3])
+                sample_y = np.concatenate([sample_y, [y0] * len(predictions)])
+                print(f'data size ({model.name}):', len(sample_x))
 
                 res.nfev += 1
                 # random points for the next point
