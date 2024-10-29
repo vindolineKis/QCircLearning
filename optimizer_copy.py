@@ -19,6 +19,7 @@ class Optimizer:
 
     def __init__(self, method:str='Neural Network') -> None:
         self.method = method
+        
         self.saved_path = None
     
     @property
@@ -64,7 +65,7 @@ class Optimizer:
         # args = kwargs.get('args', ())
 
         if method == 'Neural Network':
-            return minimize(min_func, x0, method=self._NN_opt, jac='3-point', callback=callback, options=kwargs)
+            return minimize(min_func, x0, method=self._NN_opt, jac='3-point',callback=callback, options=kwargs)
         # elif method == 'linear_regression':
         #     return minimize(min_func, x0, method=self._linear_model_opt, callback=callback, options=kwargs)
         elif method == 'random search':
@@ -92,8 +93,8 @@ class Optimizer:
         else:
             max_iter:int = 20
 
-        if 'classical_epochs' in kwargs:
-            classcial_epochs:int = kwargs['classical_epochs']
+        if 'classcial_epochs' in kwargs:
+            classcial_epochs:int = kwargs['classcial_epochs']
         else:
             classcial_epochs:int = 20
         
@@ -131,6 +132,7 @@ class Optimizer:
         for i in range(len(nn_models)):
             nn_models[i].summary()
         
+        # adam_pitimizer = adamTrainer()
 
         for _ in range(max_iter):
             res.nit += 1
@@ -140,49 +142,93 @@ class Optimizer:
                                 loss='mse',
                                 metrics=[], )
                 
+
+
                 fit_his = model.fit(sample_x,
                             sample_y,
                             epochs=classcial_epochs,
                             verbose=verbose)
-                # print the training history
-                # print(fit_his.history)
-
+                
                 x0 = optimal[0] + np.random.normal(0, .02, para_size)
-                sys.stdout.flush()
-        
+                # print("x0",x0.shape)
+                
                 prediction0 = model.back_minimize(x0=x0,method='L-BFGS-B', verbose=verbose)
+                # prediction0_res = adam_pitimizer.minimization(init_para=x0,
+                #                                             target_func=func,
+                #                                             target_func_div= model.get_gradient2,
+                #                                             verbose=verbose,
+                #                                             callback=None,
+                #                                             disp=True,
+                #                                             stop=True,
+                #                                             other_args=None)
 
+                # prediction0 = prediction0_res.x
+                # save these points to the path
                 if np.linalg.norm(prediction0 - x0) > 1e-3:
                     print(f'Prediction is different from x0: {np.linalg.norm(prediction0 - x0)}')
-                
-                # else:
-                #     print(f'Prediction is too close to x0: {np.linalg.norm(prediction0 - x0)}')
-                #     x0 = np.random.uniform(-np.pi/2,np.pi/2, len(x0)) 
-                #     prediction0 = x0
                 # Evaluate on real quantum computer
                 y0 = func(prediction0)
-                res.nfev += 1
                 # print(f'data size ({model.name}):', len(sample_x))
                 sys.stdout.flush()
                 if y0 < optimal[1]:
                     optimal = [prediction0, y0]
                 sample_x = np.append(sample_x, [prediction0], axis=0)
                 sample_y = np.append(sample_y, y0)
-                
-                if np.abs(y0-optimal[1])< 1e-5:
-                    for in range(5):
-                    print(f'Cost is too close to optimal: {y0-optimal[1]}')
-                    x0 = np.random.uniform(-np.pi/2,np.pi/2, len(x0)) 
-                    y0 = func(x0)
-                
-                if y0 < optimal[1]:
-                    optimal = [x0, y0]
-                sample_x = np.append(sample_x, [x0], axis=0)
-                sample_y = np.append(sample_y, y0)
 
+                # training from 1 random points
+                y_vec = sample_y
+                # print(f'y_vec:{y_vec}')
+                y_gs = softmax(-100*y_vec)
+                
+                # random sample 4 points from the index by the probability
+                index = np.random.choice(len(y_gs), 2, replace=True, p=y_gs)
+                # print(index.shape)
+                
+                # add 3 points to the training data
+                for i in index:
+                    # x1 = sample_x[i]
+                    x1 = sample_x[i] + np.random.normal(0, .02, para_size)
+                    prediction1 = model.back_minimize(x0=x1,method='L-BFGS-B', verbose=verbose)
+                    # prediction1 = prediction1.x
+                    # save these points to the path
+                    y1 = func(prediction1)
 
-            
-               
+                    # record the difference when prediction is different from x0
+                    # if np.linalg.norm(prediction1 - x1) > 1e-3:
+                    #     print(f'Prediction is different from x0: {np.linalg.norm(prediction1 - x1)}')
+                    
+                    # Evaluate on real quantum computer
+                    if y1 < optimal[1]:
+                        optimal = [x1, y1]
+
+                    sample_x = np.append(sample_x, [prediction1], axis=0)
+                    sample_y = np.append(sample_y, y1)
+                    print(f'training from randome select points by index {index} ')
+                    sys.stdout.flush()
+                
+                index1 = np.random.choice(len(y_gs), 2, replace=True, p=y_gs)
+
+                for i in index1:
+                    x2 = sample_x[i] + np.random.normal(0, .02, para_size)
+                    # prediction2 = model.back_minimize(x0=x2,method='L-BFGS-B', verbose=verbose)
+                
+                    # save these points to the path
+                    y2 = func(x2)
+
+                    # record the difference when prediction is different from x0
+                    # if np.linalg.norm(prediction2 - x2) > 1e-3:
+                    #     print(f'Prediction is different from x0: {np.linalg.norm(prediction2 - x2)}')
+                    
+                    # Evaluate on real quantum computer
+                    if y2 < optimal[1]:
+                        optimal = [x2, y2]
+
+                    sample_x = np.append(sample_x, [x2], axis=0)
+                    sample_y = np.append(sample_y, y2)
+                    print(f'training from randome select points by index {index1} ')
+                    sys.stdout.flush()
+            res.nfev += 1
+        
         res.x = np.copy(optimal[0])
         res.fun = np.copy(optimal[1])
     
