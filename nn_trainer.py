@@ -16,6 +16,21 @@ from keras import backend as K
 
 class trainer_model(Sequential):
 
+    '''
+    A class that inherits from keras.models.Sequential and adds a back_minimize method to minimize the output of the model by training the input.
+
+    Parameters:
+    layers: List[keras.layers.Layer]
+        A list of keras layers to be added to the model.
+    trainable: bool
+        Whether the model is trainable or not.
+    name: str
+        The name of the model.
+
+    Returns:  trainer_model
+    
+    '''
+
     K.set_floatx('float64') 
     def __init__(self,
                  layers:klayers.Layer=None,
@@ -58,21 +73,7 @@ class trainer_model(Sequential):
                 raise ValueError("Gradient calculation failed; TensorFlow returned None.")
 
             gradients = gradients.numpy()[0]
-            
-            # for i in range(len(x0)):
-            #     if x0[i] > np.pi/2:
-            #         gradients[i]= abs(x0[i])*20
-            #         # overwritten_count += 1
-            #     elif x0[i] < -np.pi/2:
-            #         gradients[i]= -abs(x0[i])*20
-            #         # overwritten_count += 1
-            #     else:
-            #         gradients[i] = gradients[i]
-        
-            # print x0, gradients
-            # print(f'parameters: {x0}')
-            # print(f"Using gradients: {gradients}")
-        
+
 
             return loss.numpy()[0][0], gradients
         
@@ -119,8 +120,8 @@ class trainer_model(Sequential):
 
     
 
-        result = minimize(to_minimize_with_grad, x, bounds=[(-np.pi*2,np.pi*2)]*len(x0), jac=True, method=method, tol=1e-12,
-                          options={'disp': None, 'maxls': 20, 'iprint': -1, 'eps': 1e-12,'ftol':1e-12, 'maxiter': 15000, 'maxcor': 10, 'maxfun': 15000}) 
+        result = minimize(to_minimize_with_grad, x, bounds=[(-np.pi*2,np.pi*2)]*len(x0), jac=True, method=method, tol=1e-10,
+                          options={'disp': None, 'maxls': 20, 'iprint': -1, 'eps': 1e-10,'ftol':1e-10, 'maxiter': 15000, 'maxcor': 10, 'maxfun': 15000}) 
         print("Optimization result:", result)
         print(f'Optimization converged: {result.success}')
 
