@@ -15,14 +15,14 @@ from keras import backend as K
 
 
 class trainer_model(Sequential):
+
+    K.set_floatx('float64') 
     def __init__(self,
                  layers:klayers.Layer=None,
                  trainable:bool=True,
                  name:str=None,
                  ):
         super().__init__(layers=layers, trainable=trainable, name=name)
-    K.set_floatx('float64') 
-    # TODO: gradient based methods
    
     def back_minimize(self,
                  x0:np.ndarray=None,
@@ -30,7 +30,9 @@ class trainer_model(Sequential):
         """
         After the model is trained, minimize the output by training the input.
         """
-
+        x_list = []
+        f_list = []
+        gradient_list = []
         # # @tf.function
         def to_minimize(x):
             # pad_x = np.array([x])
@@ -43,10 +45,13 @@ class trainer_model(Sequential):
         def to_minimize_with_grad(x):
             x0 = x
             x = tf.Variable([x0])
+            x_list.append(x0)
             with tf.GradientTape() as tape:
                 tape.watch(x)
                 loss = to_minimize(x)
+                f_list.append(loss.numpy()[0][0])
             gradients = tape.gradient(loss, x)
+            gradient_list.append(gradients)
             # print("shape of the gradients:", gradients.numpy().shape())
 
             if gradients is None:
@@ -100,8 +105,6 @@ class trainer_model(Sequential):
             _, tf_grad = to_minimize_with_grad(x)
             _, fd_grad ,fd_grad_m= finite_difference_grad(x, h=1e-6)
             
-           
-            
             print("TensorFlow gradient:", tf_grad)
             # print(tf_grad.shape())
             print("Finite difference gradient:", fd_grad)
@@ -114,17 +117,22 @@ class trainer_model(Sequential):
         
         print('the difference between the gradients of the finite difference and the tensorflow is:', compare_gradients(x))
 
-        result = minimize(to_minimize_with_grad, x, bounds=[(-np.pi/2,np.pi/2)]*len(x0), jac=True, method=method,tol=1e-7)
+    
+
+        result = minimize(to_minimize_with_grad, x, bounds=[(-np.pi*2,np.pi*2)]*len(x0), jac=True, method=method, tol=1e-12,
+                          options={'disp': None, 'maxls': 20, 'iprint': -1, 'eps': 1e-12,'ftol':1e-12, 'maxiter': 15000, 'maxcor': 10, 'maxfun': 15000}) 
+        print("Optimization result:", result)
+        print(f'Optimization converged: {result.success}')
+
+        print(f'stored x_list: {x_list[-1]}')
+        print(f'stored f_list: {f_list}')
+        print(f'stored gradient_list: {gradient_list[-1]}')
+
         
         if result.success:
             print("Optimization converged successfully.")
         else:
              print("Optimization did not converge. Reason:", result.message)
-
-        # result = minimize(to_minimize_with_grad, x, jac=True, method=method,tol=1e-6)
-
-        # if np.linalg.norm(result.x - x0) > 1e-3:
-        #     print(f'Prediction is different from in trainner: {np.linalg.norm(result.x - x0)} after {result.nit} iterations')
 
         return result.x 
 

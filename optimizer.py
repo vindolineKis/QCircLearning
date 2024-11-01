@@ -1,7 +1,7 @@
 from mimetypes import init
 from typing import List
 from scipy.optimize import minimize, OptimizeResult
-from scipy.special import softmax   
+# from scipy.special import softmax   
 from nn_trainer import trainer_model
 import numpy as np
 from sklearn.linear_model import LinearRegression
@@ -19,6 +19,7 @@ class Optimizer:
 
     def __init__(self, method:str='Neural Network') -> None:
         self.method = method
+        
         self.saved_path = None
     
     @property
@@ -118,8 +119,6 @@ class Optimizer:
         for para in sample_x: # generate the initial points
 
             y = func(para)
-        
-
             if y < optimal[1]:
                 optimal = [para, y]
             sample_y = np.append(sample_y, y)
@@ -127,15 +126,33 @@ class Optimizer:
         print(f'Training with the neural networks')
         # flush the output
         sys.stdout.flush()
-
-        for i in range(len(nn_models)):
-            nn_models[i].summary()
-        
-
+        # information of the models
+        # for i in range(len(sample_y)):
+        # # train from the diffirent initial point
+        #     for model in nn_models:
+        #         model.compile(optimizer='adam', 
+        #                         loss='mse',
+        #                         metrics=[], )
+                
+        #         fit_his = model.fit(sample_x,
+        #                     sample_y,
+        #                     epochs=classcial_epochs,
+        #                     verbose=verbose)
+        #         x0 = sample_x[i]
+        #         prediction0 = model.back_minimize(x0=x0,method='L-BFGS-B', verbose=verbose)
+        #         y = func(prediction0)
+        #         if y < optimal[1]:
+        #             optimal = [prediction0, y]    
+                    
+        for model in nn_models:
+            model.summary()
+        # flush the output
+        sys.stdout.flush()
         for _ in range(max_iter):
             res.nit += 1
-
+            
             for model in nn_models:
+                
                 model.compile(optimizer='adam', 
                                 loss='mse',
                                 metrics=[], )
@@ -147,9 +164,9 @@ class Optimizer:
                 # print the training history
                 # print(fit_his.history)
 
-                x0 = optimal[0] + np.random.normal(0, .02, para_size)
+                x0 = optimal[0] + np.random.normal(0, 0.02, para_size)
                 sys.stdout.flush()
-        
+            
                 prediction0 = model.back_minimize(x0=x0,method='L-BFGS-B', verbose=verbose)
 
                 if np.linalg.norm(prediction0 - x0) > 1e-3:
@@ -161,28 +178,43 @@ class Optimizer:
                 #     prediction0 = x0
                 # Evaluate on real quantum computer
                 y0 = func(prediction0)
-                res.nfev += 1
+                
                 # print(f'data size ({model.name}):', len(sample_x))
                 sys.stdout.flush()
                 if y0 < optimal[1]:
                     optimal = [prediction0, y0]
-                sample_x = np.append(sample_x, [prediction0], axis=0)
-                sample_y = np.append(sample_y, y0)
+                # sample_x = np.append(sample_x, [prediction0], axis=0)
+                # sample_y = np.append(sample_y, y0)
+       
+                # Gather all prediction variations (original, +4π, and -4π)
+                predictions = np.vstack([prediction0, prediction0+ np.pi*2,prediction0 - np.pi*2])
+                # Extend sample_x with the new predictions
+                # f_1 = func(predictions[1])
+                # f_2 = func(predictions[2])
+                # # check if the y0,f_1,f_2 are the same
+                # allclose = np.allclose([y0,f_1,f_2], y0, rtol=1e-5)
+                # if allclose:
+                #     print(f'True True True: {y0}, {f_1}, {f_2}')
+                # else:
+                #     print(f'False False False: {y0}, {f_1}, {f_2}')
                 
-                if np.abs(y0-optimal[1])< 1e-5:
-                    for in range(5):
-                    print(f'Cost is too close to optimal: {y0-optimal[1]}')
-                    x0 = np.random.uniform(-np.pi/2,np.pi/2, len(x0)) 
-                    y0 = func(x0)
-                
-                if y0 < optimal[1]:
-                    optimal = [x0, y0]
-                sample_x = np.append(sample_x, [x0], axis=0)
-                sample_y = np.append(sample_y, y0)
+                                
+                sample_x = np.concatenate([sample_x, predictions], axis=0)
+                # Extend sample_y with the corresponding y0 values (same for each variation)
+                sample_y = np.concatenate([sample_y, [y0] * 3])
 
-
-            
-               
+                res.nfev += 1
+                # random points for the next point
+                if np.abs(y0-optimal[1])< 1e-5 and optimal[1]>1e-3:
+                    for i in range(2):
+                        print(f'Cost is too close to optimal: {np.abs(y0-optimal[1])}')
+                        x0 = np.random.uniform(-np.pi,np.pi, len(x0)) 
+                        y0 = func(x0)
+                        if y0 < optimal[1]:
+                            optimal = [x0, y0]
+                        sample_x = np.append(sample_x, [x0], axis=0)
+                        sample_y = np.append(sample_y, y0)
+       
         res.x = np.copy(optimal[0])
         res.fun = np.copy(optimal[1])
     
@@ -252,3 +284,5 @@ class Optimizer:
         # res.nit = i + 1
         return res
     
+
+
