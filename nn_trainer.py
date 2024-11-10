@@ -1,7 +1,9 @@
 import tensorflow as tf
 
 import keras
-from keras.src.models.sequential import Sequential
+# from keras.src.models.sequential import Sequential
+from keras.models import Sequential
+
 from keras import layers as klayers
 from keras import optimizers as koptimizers
 import numpy as np
@@ -37,7 +39,7 @@ class trainer_model(Sequential):
                  trainable:bool=True,
                  name:str=None,
                  ):
-        super().__init__(layers=layers, trainable=trainable, name=name)
+        super().__init__(layers=layers, name=name)
    
     def back_minimize(self,
                  x0:np.ndarray=None,
@@ -120,8 +122,8 @@ class trainer_model(Sequential):
 
     
 
-        result = minimize(to_minimize_with_grad, x, bounds=[(-np.pi*2,np.pi*2)]*len(x0), jac=True, method=method, tol=1e-10,
-                          options={'disp': None, 'maxls': 20, 'iprint': -1, 'eps': 1e-10,'ftol':1e-10, 'maxiter': 15000, 'maxcor': 10, 'maxfun': 15000}) 
+        result = minimize(to_minimize_with_grad, x, bounds=[(-np.pi*2,np.pi*2)]*len(x0), jac=True, method=method, tol=1e-6,
+                          options={'disp': None, 'maxls': 20, 'iprint': -1, 'eps': 1e-7,'ftol':1e-6, 'maxiter': 1500, 'maxcor': 12, 'maxfun': 1500}) 
         print("Optimization result:", result)
         print(f'Optimization converged: {result.success}')
 

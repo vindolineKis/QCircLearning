@@ -7,9 +7,36 @@ import numpy as np
 from sklearn.linear_model import LinearRegression
 from keras.callbacks import EarlyStopping, ReduceLROnPlateau
 from keras.optimizers import Adam
-  
+import tensorflow as tf
+# import tensorflow_addons as tfa
 
 import sys
+import os
+import random
+
+# Set the seed value for reproducibility
+SEED = 42
+
+# Set the PYTHONHASHSEED environment variable
+os.environ['PYTHONHASHSEED'] = str(SEED)
+
+# Set random seed for Python's `random` module
+random.seed(SEED)
+
+# Set random seed for NumPy
+np.random.seed(SEED)
+
+# Set random seed for TensorFlow
+tf.random.set_seed(SEED)
+
+# Additional configuration for GPU determinism in TensorFlow
+# Make sure operations involving cuDNN are deterministic
+os.environ['TF_DETERMINISTIC_OPS'] = '1'
+os.environ['TF_CUDNN_DETERMINISTIC'] = '1'
+
+
+
+
 
 class Optimizer:
 
@@ -96,18 +123,30 @@ class Optimizer:
         trainer_model.simple_model((para_size,)),
     ])
 
+      
 
-        sample_x = init_data
+
         sample_y = np.array([])
-
+        sample_x = np.array([]).reshape(0,para_size)
+        # boundry for the parameters
+        # bound_low = -2 * np.pi
+        # bound_high = 2 * np.pi
         optimal = [None,1] # [opt_para, opt_y]
 
-        for para in sample_x: # generate the initial points
+        for para in init_data: # generate the initial points
 
             y = func(para)
             if y < optimal[1]:
                 optimal = [para, y]
+        
+            # prid_data = np.vstack([para, para+ np.pi*2,para - np.pi*2])
+            # prid_data = np.clip(prid_data, bound_low, bound_high)
+            # len_x = prid_data.shape[0]
+            # sample_x = np.vstack([sample_x, prid_data])
+            # sample_y = np.append(sample_y, [y]*len_x)
+            sample_x = np.append(sample_x, [para], axis=0)
             sample_y = np.append(sample_y, y)
+          
 
         print(f'Training with the neural networks')
         # flush the output
@@ -119,60 +158,73 @@ class Optimizer:
         # flush the output
             sys.stdout.flush()
             print("!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            print("early stopping")
-            early_stopping = EarlyStopping(
-                monitor='loss',
-                min_delta=1e-12,
-                patience=50,  # Stop training if no improvement in 5 epochs
-                mode='min',
-                restore_best_weights=True
-            )
-            print("reduce_lr")
-            reduce_lr = ReduceLROnPlateau(
-                monitor='loss', factor=0.5, patience=5, min_lr=1e-8, verbose=1
-            )
-          
+            # print("early stopping")
+            # early_stopping = EarlyStopping(
+            #     monitor='loss',
+            #     # min_delta=1e-6,
+            #     patience=100,  # Stop training if no improvement in 5 epochs
+            #     mode='min',
+            #     restore_best_weights=True
+            # )
+            # print("reduce_lr")
+            # reduce_lr = ReduceLROnPlateau(
+            #     monitor='loss', factor=0.5, patience=10, min_lr=1e-6, verbose=1
+            # )
+            # clr = tfa.optimizers.CyclicalLearningRate(
+            #     initial_learning_rate=1e-4,
+            #     maximal_learning_rate=1e-2,
+            #     step_size=2000,
+            #     scale_fn=lambda x: 1/(2.**(x-1)),
+            #     scale_mode="cycle",
+            # )
+
             for iteration in range(max_iter):
+
+              
                 res.nit += 1
                 
                 for model in nn_models:
                     
-                    model.compile(optimizer=Adam(learning_rate=1e-3), 
-                                    loss='mse',
-
-                                    metrics=[], )
+                    model.compile(optimizer=Adam(learning_rate=1e-4), 
+                                    loss='mse', metrics=['mae'])
+                    
                     print("!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-                    print(classical_epochs)
-                    if len(sample_x) < batch_size:
-                        epochs = classical_epochs
-                    else:
-                        epochs = max(classical_epochs - (len(sample_x) // batch_size + 1), 1)  # Ensure at least 1 epoch
-
+                    print(f"epochs: {classical_epochs}")
+                    print("!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+                    print(f"batch size: {batch_size}")
+                    
                     fit_his = model.fit(sample_x,
                                 sample_y,
-                                epochs=epochs,
+                                epochs=classical_epochs,
                                 batch_size=batch_size,
                                 verbose=verbose,
-                                callbacks=[early_stopping, reduce_lr])
+                                # callbacks=[early_stopping]
+                                )
                     # print the training history
                     # Print loss and epoch informatio
                     print("====================================================")
                     print(f"Iteration {iteration + 1}/{max_iter}")
-                    print(f'epochs: {epochs}')
+                    print(f"batch")
+                    print(f'epochs: {classical_epochs}')
                     print(f'sample size: {len(sample_x)}')
                     for epoch, loss in enumerate(fit_his.history['loss'], start=1):
-                        print(f"Epoch {epoch}/{epochs} - Loss: {loss:.8f}")
+                        print(f"Epoch {epoch}/{classical_epochs} - Loss: {loss:.1e}")
                     sys.stdout.flush()
                     print("====================================================")
                    
+
+
+
                     x0 = optimal[0] 
                     # + np.random.normal(0, 0.02, para_size)
+                    
                     sys.stdout.flush()
-                
+                    
                     prediction0 = model.back_minimize(x0=x0,method='L-BFGS-B', verbose=verbose)
+                    # print(f'ite:::::::::::::::::::::::::::::::::::::::: {res.nit}') 
 
-                    if np.linalg.norm(prediction0 - x0) > 1e-3:
-                        print(f'Prediction is different from x0: {np.linalg.norm(prediction0 - x0)}')
+                    # if np.linalg.norm(prediction0 - x0) > 1e-3:
+                    #     print(f'Prediction is different from x0: {np.linalg.norm(prediction0 - x0)}')
                     
                     # else:
                     #     print(f'Prediction is too close to x0: {np.linalg.norm(prediction0 - x0)}')
@@ -180,9 +232,15 @@ class Optimizer:
                     #     prediction0 = x0
                     # Evaluate on real quantum computer
                     y0 = func(prediction0)
-                    
+                    res.nfev += 1
+                    # if np.abs(y0)> 1e-4:
+                    #     yr = func(x0)
+                    #     if yr < y0:
+                    #         print(f'Random point is better than prediction: {yr} < {y0}')
+                    #         prediction0 = x0
+                    #         y0 = yr
                     # print(f'data size ({model.name}):', len(sample_x))
-                    sys.stdout.flush()
+                    # sys.stdout.flush()
                     if y0 < optimal[1]:
                         optimal = [prediction0, y0]
                     # sample_x = np.append(sample_x, [prediction0], axis=0)
@@ -190,32 +248,26 @@ class Optimizer:
         
                     # Gather all prediction variations (original, +4π, and -4π)
                     predictions = np.vstack([prediction0, prediction0+ np.pi*2,prediction0 - np.pi*2])
-                    # Extend sample_x with the new predictions
-                    # f_1 = func(predictions[1])
-                    # f_2 = func(predictions[2])
-                    # # check if the y0,f_1,f_2 are the same
-                    # allclose = np.allclose([y0,f_1,f_2], y0, rtol=1e-5)
-                    # if allclose:
-                    #     print(f'True True True: {y0}, {f_1}, {f_2}')
-                    # else:
-                    #     print(f'False False False: {y0}, {f_1}, {f_2}')
+                    # predictions = np.clip(predictions, bound_low, bound_high)
+                    len_p = predictions.shape[0]
+                    
                     
                                     
                     sample_x = np.concatenate([sample_x, predictions], axis=0)
                     # Extend sample_y with the corresponding y0 values (same for each variation)
-                    sample_y = np.concatenate([sample_y, [y0] * 3])
+                    sample_y = np.concatenate([sample_y, [y0] * len_p])
 
-                    res.nfev += 1
+                    
                     # random points for the next point
-                    if np.abs(y0-optimal[1])< 1e-5 and optimal[1]>1e-3:
-                        for i in range(2):
-                            print(f'Cost is too close to optimal: {np.abs(y0-optimal[1])}')
-                            x0 = np.random.uniform(-np.pi*2,np.pi*2, len(x0)) 
-                            y0 = func(x0)
-                            if y0 < optimal[1]:
-                                optimal = [x0, y0]
-                            sample_x = np.append(sample_x, [x0], axis=0)
-                            sample_y = np.append(sample_y, y0)
+                    # if np.abs(y0-optimal[1])< 1e-5 and optimal[1]>1e-3:
+                    #     for i in range(2):
+                    #         print(f'Cost is too close to optimal: {np.abs(y0-optimal[1])}')
+                    #         x0 = np.random.uniform(-np.pi*2,np.pi*2, len(x0)) 
+                    #         y0 = func(x0)
+                    #         if y0 < optimal[1]:
+                    #             optimal = [x0, y0]
+                    #         sample_x = np.append(sample_x, [x0], axis=0)
+                    #         sample_y = np.append(sample_y, y0)
        
         res.x = np.copy(optimal[0])
         res.fun = np.copy(optimal[1])
