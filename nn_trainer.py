@@ -11,8 +11,13 @@ from scipy.optimize import minimize
 # from tensorflow.keras.optimizers import Adam
 from scipy.optimize import approx_fprime
 from scipy.misc import derivative
+# from tensorflow.keras.optimizers import Adam
+from scipy.optimize import approx_fprime
+from scipy.misc import derivative
 
 from typing import List, Callable
+from keras import backend as K
+
 from keras import backend as K
 
 
@@ -43,15 +48,20 @@ class trainer_model(Sequential):
    
     def back_minimize(self,
                  x0:np.ndarray=None,
-                 method = 'BFGS', verbose = 0):
+                 method = 'L-BFGS-B', verbose = 0):
         """
         After the model is trained, minimize the output by training the input.
         """
         x_list = []
         f_list = []
         gradient_list = []
+        x_list = []
+        f_list = []
+        gradient_list = []
         # # @tf.function
         def to_minimize(x):
+            # pad_x = np.array([x])
+            return self(x)
             # pad_x = np.array([x])
             return self(x)
 
@@ -138,6 +148,7 @@ class trainer_model(Sequential):
              print("Optimization did not converge. Reason:", result.message)
 
         return result.x 
+
 
 
     @staticmethod

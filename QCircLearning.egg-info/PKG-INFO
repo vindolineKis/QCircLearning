@@ -1,0 +1,13 @@
+Metadata-Version: 2.1
+Name: QCircLearning
+Version: 0.3
+Summary: Qiskit based variational circuit
+Home-page: https://github.com/Canoming/QCircLearning
+Author: Canoming
+Author-email: canoming@163.com
+License: MIT
+License-File: LICENSE
+Requires-Dist: qiskit<1.0.0,>=0.45.0
+Requires-Dist: keras>=3.0.0
+Requires-Dist: pylatexenc>=2.8
+Requires-Dist: matplotlib>=3.0.0

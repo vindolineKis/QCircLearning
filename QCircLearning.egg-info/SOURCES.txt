@@ -1,0 +1,9 @@
+LICENSE
+README.md
+setup.py
+QCircLearning.egg-info/PKG-INFO
+QCircLearning.egg-info/SOURCES.txt
+QCircLearning.egg-info/dependency_links.txt
+QCircLearning.egg-info/not-zip-safe
+QCircLearning.egg-info/requires.txt
+QCircLearning.egg-info/top_level.txt

@@ -2,6 +2,7 @@ from mimetypes import init
 from typing import List
 from scipy.optimize import minimize, OptimizeResult
 # from scipy.special import softmax   
+# from scipy.special import softmax   
 from nn_trainer import trainer_model
 import numpy as np
 from sklearn.linear_model import LinearRegression
@@ -303,7 +304,6 @@ class Optimizer:
         for para in sample_x: # generate the initial points
 
             y = func(para)
-
             if y < optimal[1]:
                 optimal = [para, y]
             sample_y = np.append(sample_y, y)
@@ -331,12 +331,19 @@ class Optimizer:
                 optimal = [prediction, y]
             sample_x = np.append(sample_x, [prediction], axis=0)
             sample_y = np.append(sample_y, y)
+            if y < optimal[1]:
+                optimal = [prediction, y]
+            sample_x = np.append(sample_x, [prediction], axis=0)
+            sample_y = np.append(sample_y, y)
         
         res.x = np.copy(optimal[0])
         res.fun = np.copy(optimal[1])
         # res.message = message
         # res.nit = i + 1
         return res
+    
+
+
     
 
 
