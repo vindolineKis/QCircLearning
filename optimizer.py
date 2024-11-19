@@ -2,7 +2,6 @@ from typing import List
 from scipy.optimize import minimize, OptimizeResult
 from nn_trainer import TrainerModel
 import numpy as np
-from sklearn.linear_model import LinearRegression
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -97,6 +96,7 @@ class Optimizer:
             TrainerModel.default_model((para_size,)),
             TrainerModel.simple_model((para_size,))
         ])
+        patience = kwargs.get('patience', 100)
 
         sample_y, sample_x = np.array([]), np.empty((0, para_size))
         optimal = [None, float('inf')]
@@ -118,7 +118,13 @@ class Optimizer:
 
             criterion = nn.MSELoss()
             optimizer = optim.Adam(model.parameters(), lr=1e-4)
-            scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=300, verbose=True,min_lr=1e-6)
+            scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer,
+                                                             mode='min',
+                                                             factor=0.5,
+                                                             patience=patience,
+                                                             verbose=True,
+                                                             min_lr=1e-6)
+            precision_threshold = 1e-8
 
             for iteration in range(max_iter):
                 res.nit += 1
@@ -152,7 +158,10 @@ class Optimizer:
                         print(f'Epoch {epoch + 1}/{classical_epochs}, Average Loss: {avg_loss:.1e}')
                         sys.stdout.flush()
                 scheduler.step(total_loss)  
-
+                current_lr = optimizer.param_groups[0]['lr']
+                if current_lr < precision_threshold:
+                    print(f"Training stopped as learning rate reached precision threshold: {current_lr:.1e}")
+                    break
                 # Prediction and updating optimal parameters
                 x0 = optimal[0]
                 prediction0 = model.back_minimize(x0=x0, method='L-BFGS-B', verbose=verbose)

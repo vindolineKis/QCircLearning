@@ -94,7 +94,7 @@ class VCircuitConstructor:
                 self.ansatz = _predefined_ansatz[ansatz]
             else:
                 raise ValueError('Invalid ansatz. Please define your own ansatz.')
-        elif isinstance(ansatz, callable):
+        elif callable(ansatz):
             self.ansatz = ansatz
         else:
             raise ValueError('Invalid ansatz.')

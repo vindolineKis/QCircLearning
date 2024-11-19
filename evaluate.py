@@ -1,4 +1,3 @@
-# %%
 from typing import Mapping
 import numpy as np
 
@@ -67,7 +66,7 @@ def gate_fidelity_circuit(U:QuantumCircuit,V:QuantumCircuit):
     return result.data()['probabilities'][0]*2-1
 
 def gate_fidelity_para(full_qc:QuantumCircuit,para:Mapping):
-    circ = transpile(full_qc.bind_parameters(para),simulator)
+    circ = transpile(full_qc.assign_parameters(para),simulator)
     result = simulator.run(circ).result()
     return result.data()['probabilities'][0]*2-1
 
