@@ -1,13 +1,19 @@
 from typing import Union, Callable, Optional
 from scipy.optimize import minimize, OptimizeResult
+from cust_optimizer import NNOptimizer, RSOptimizer
 
 
-class Optimizer:
+class Optimization:
 
     def __init__(self, method: Optional[Union[str, Callable]] = "BFGS") -> None:
         self.method = method
         self.saved_path = None
+    _available_methods = ['Neural Network', 'Nelder-Mead', 'Powell', 'CG', 'BFGS', 'random search']
 
+    @staticmethod
+    def list_methods():
+        return Optimization._available_methods
+    
     @property
     def get_path_x(self):
         return getattr(self, "path_x", None)
@@ -38,7 +44,15 @@ class Optimizer:
             min_func = func
 
         method = method or self.method
-        if callable(method):
-            return method(min_func, x0, callback=callback, **kwargs)
+  
+        if method == 'Neural Network':
+            method_nn = NNOptimizer() 
+            return method_nn.forward_fitting(func=min_func, x0=x0, callback=callback, **kwargs)  
+        elif method == 'random search':
+            method_rs = RSOptimizer()
+            return method_rs.random_search(func=min_func, x0=x0, callback=callback, **kwargs)
+        elif method in ['BFGS', 'Nelder-Mead', 'Powell', 'CG']:
+            return minimize(min_func, x0, method=method, jac='3-point' if method == 'BFGS' else None, callback=callback, options=kwargs)
         else:
-            return minimize(min_func, x0, method=method, callback=callback, **kwargs)
+            raise ValueError(f'Optimizer method {method} not available. Available methods are {self.list_methods()}')
+

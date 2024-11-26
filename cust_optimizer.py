@@ -7,17 +7,18 @@ from scipy.optimize import minimize, OptimizeResult
 from typing import List, Callable
 
 
-class TrainerModel(nn.Module):
+class NNOptimizer(nn.Module):
+
     def __init__(self, layers: List[nn.Module] = None, name: str = None):
-        super(TrainerModel, self).__init__()
+        super(NNOptimizer, self).__init__()
         self.model = nn.Sequential(*layers) if layers else nn.Sequential()
-        self.name = name or "TrainerModel"
+        self.name = name or "NNOptimizer"
         self.double()  # Use double precision for consistency
 
     def forward(self, x):
         return self.model(x)
 
-    def back_minimize(
+    def back_searching(
         self, x0: np.ndarray = None, method: str = "L-BFGS-B", verbose: int = 0
     ):
         x_list, f_list, gradient_list = [], [], []
@@ -69,39 +70,8 @@ class TrainerModel(nn.Module):
                 print("Optimization did not converge. Reason:", result.message)
 
         return result.x
-
-    @staticmethod
-    def default_model(input_shape: tuple):
-        return TrainerModel(
-            layers=[
-                nn.Linear(input_shape[0], 96),
-                nn.ELU(),
-                nn.Linear(96, 64),
-                nn.ELU(),
-                nn.Linear(64, 18),
-                nn.ELU(),
-                nn.Linear(18, 10),
-                nn.ELU(),
-                nn.Linear(10, 1),
-            ],
-            name="default_model",
-        )
-
-    @staticmethod
-    def simple_model(input_shape: tuple):
-        return TrainerModel(
-            layers=[
-                nn.Linear(input_shape[0], 32),
-                nn.ELU(),
-                nn.Linear(32, 8),
-                nn.Sigmoid(),
-                nn.Linear(8, 1),
-            ],
-            name="simple_model",
-        )
-
-    @staticmethod
-    def NN_opt(func, x0, callback=None, **kwargs):
+    
+    def forward_fitting(self, func, x0, callback=None, **kwargs):
         para_size = len(x0)
         res = OptimizeResult(nfev=0, nit=0)
         res.nfev = 0
@@ -116,8 +86,8 @@ class TrainerModel(nn.Module):
         nn_models = kwargs.get(
             "NN_Models",
             [
-                TrainerModel.default_model((para_size,)),
-                TrainerModel.simple_model((para_size,)),
+                NNOptimizer.default_model((para_size,)),
+                NNOptimizer.simple_model((para_size,)),
             ],
         )
         patience = kwargs.get("patience", 100)
@@ -196,7 +166,7 @@ class TrainerModel(nn.Module):
                     break
                 # Prediction and updating optimal parameters
                 x0 = optimal[0]
-                prediction0 = model.back_minimize(
+                prediction0 = model.back_searching(
                     x0=x0, method="L-BFGS-B", verbose=verbose
                 )
                 y0 = func(prediction0)
@@ -215,6 +185,40 @@ class TrainerModel(nn.Module):
         res.fun = np.copy(optimal[1])
 
         return res
+
+    
+    @staticmethod
+    def default_model(input_shape: tuple):
+        return NNOptimizer(
+            layers=[
+                nn.Linear(input_shape[0], 96),
+                nn.ELU(),
+                nn.Linear(96, 64),
+                nn.ELU(),
+                nn.Linear(64, 18),
+                nn.ELU(),
+                nn.Linear(18, 10),
+                nn.ELU(),
+                nn.Linear(10, 1),
+            ],
+            name="default_model",
+        )
+
+    @staticmethod
+    def simple_model(input_shape: tuple):
+        return NNOptimizer(
+            layers=[
+                nn.Linear(input_shape[0], 32),
+                nn.ELU(),
+                nn.Linear(32, 8),
+                nn.Sigmoid(),
+                nn.Linear(8, 1),
+            ],
+            name="simple_model",
+        )
+
+  
+class RSOptimizer:
 
     @staticmethod
     def random_search(func, x0, callback=None, **kwargs):
