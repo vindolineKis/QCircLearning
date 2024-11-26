@@ -101,7 +101,7 @@ class TrainerModel(nn.Module):
         )
 
     @staticmethod
-    def _NN_opt(func, x0, callback=None, **kwargs):
+    def NN_opt(func, x0, callback=None, **kwargs):
         para_size = len(x0)
         res = OptimizeResult(nfev=0, nit=0)
         res.nfev = 0
@@ -217,7 +217,7 @@ class TrainerModel(nn.Module):
         return res
 
     @staticmethod
-    def _random_search(self, func, x0, callback=None, **kwargs):
+    def random_search(func, x0, callback=None, **kwargs):
         para_size = len(x0)
         res = OptimizeResult(nfev=0, nit=0)
 
