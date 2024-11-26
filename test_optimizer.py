@@ -63,9 +63,3 @@ def test_optimize_with_method_as_string():
     assert optimizer.get_path_y is not None
     assert len(optimizer.get_path_x) > 0
     assert len(optimizer.get_path_y) > 0
-
-if __name__ == "__main__":
-    pytest.main()
-
-if __name__ == "__main__":
-    pytest.main()
