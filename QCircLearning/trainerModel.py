@@ -159,10 +159,8 @@ def NN_opt(func, x0, callback=None, **kwargs):
             print(f"Iteration {iteration + 1}/{max_iter}")
 
             data_loader = DataLoader(
-                list(zip(sample_x, sample_y)), batch_size=batch_size, shuffle=False
+                list(zip(sample_x, sample_y)), batch_size=batch_size, shuffle=True
             )
-            print(data_loader.dataset[0])
-            print(data_loader.dataset[1])
             model.train()
             for epoch in range(classical_epochs):
                 total_loss = 0.0
