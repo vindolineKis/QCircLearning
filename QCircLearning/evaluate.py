@@ -39,8 +39,6 @@ def post_processing_ori(n:int):
     qc.save_probabilities([0])
     return qc
 
-# %%
-
 def fid_circuit(U:QuantumCircuit,V:QuantumCircuit):
     N = U.num_qubits
     if V.num_qubits != N:
