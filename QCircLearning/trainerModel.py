@@ -83,16 +83,6 @@ def back_minimize(
         method=method,
         tol=1e-6,
         options=kwargs["back_minimize_options"],
-        # options={
-        #     "disp": None,
-        #     "maxls": 20,
-        #     "iprint": -1,
-        #     "eps": 1e-7,
-        #     "ftol": 1e-6,
-        #     "maxiter": 1500,
-        #     "maxcor": 12,
-        #     "maxfun": 1500,
-        # },
     )
 
     if verbose:
