@@ -175,12 +175,12 @@ def NN_opt(func, x0, callback=None, **kwargs):
                     )
                     sys.stdout.flush()
             # scheduler.step(total_loss)
-            current_lr = scheduler.get_last_lr()[0]
-            if current_lr < precision_threshold:
-                print(
-                    f"Training stopped as learning rate reached precision threshold: {current_lr:.1e}"
-                )
-                break
+            # current_lr = scheduler.get_last_lr()[0]
+            # if current_lr < precision_threshold:
+            #     print(
+            #         f"Training stopped as learning rate reached precision threshold: {current_lr:.1e}"
+            #     )
+            #     break
             # Prediction and updating optimal parameters
             x0 = optimal[0]
             prediction0 = back_minimize(model, x0=x0, method="L-BFGS-B", **kwargs)
@@ -188,7 +188,8 @@ def NN_opt(func, x0, callback=None, **kwargs):
             res.nfev += 1
 
             optimal = [prediction0, y0] if y0 < optimal[1] else optimal
-
+            
+            # TODO: become a data augmentation function (data, n_points) -> new_data
             predictions = [
                 prediction0,
                 prediction0 + np.pi * 2,
