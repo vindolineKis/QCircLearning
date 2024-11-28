@@ -82,7 +82,7 @@ def back_minimize(
         jac=True,
         method=method,
         tol=1e-6,
-        options=kwargs,
+        options=kwargs["back_minimize_options"],
         # options={
         #     "disp": None,
         #     "maxls": 20,
@@ -117,7 +117,7 @@ def NN_opt(func, x0, callback=None, **kwargs):
 
     # Default values
     init_data = kwargs.get(
-        "init_data", [np.random.uniform(-10, 10, (para_size,)) for _ in range(60)]
+        "init_data", [np.random.uniform(-10, 10, para_size) for _ in range(60)]
     )
     max_iter = kwargs.get("max_iter", 20)
     classical_epochs = kwargs.get("classical_epochs", 20)
@@ -131,7 +131,13 @@ def NN_opt(func, x0, callback=None, **kwargs):
             TrainerModel.simple_model((para_size,)),
         ],
     )
-    patience = kwargs.get("patience", 100)
+    scheduler_kwargs = kwargs.get("scheduler_kwargs", {})
+    scheduler_kw = {
+        "mode": scheduler_kwargs.get("mode", "min"),
+        "factor": scheduler_kwargs.get("factor", 0.5),
+        "patience": scheduler_kwargs.get("patience", 100),
+        "min_lr": scheduler_kwargs.get("min_lr", 1e-6),
+    }
 
     sample_x = init_data
     sample_y = [func(para) for para in sample_x]
@@ -147,12 +153,9 @@ def NN_opt(func, x0, callback=None, **kwargs):
         optimizer = optim.Adam(model.parameters(), lr=1e-4)
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(
             optimizer,
-            mode="min",
-            factor=0.5,
-            patience=patience,
-            min_lr=1e-6,
+            **scheduler_kw,
         )
-        precision_threshold = 1e-8
+        precision_threshold = kwargs.get("precision_threshold", 1e-8)
 
         for iteration in range(max_iter):
             res.nit += 1
@@ -190,9 +193,7 @@ def NN_opt(func, x0, callback=None, **kwargs):
                 break
             # Prediction and updating optimal parameters
             x0 = optimal[0]
-            prediction0 = back_minimize(
-                model, x0=x0, method="L-BFGS-B", verbose=verbose
-            )
+            prediction0 = back_minimize(model, x0=x0, method="L-BFGS-B", **kwargs)
             y0 = func(prediction0)
             res.nfev += 1
 
@@ -216,11 +217,13 @@ def random_search(func, x0, callback=None, **kwargs):
     para_size = len(x0)
     res = OptimizeResult(nfev=0, nit=0)
 
-    init_data = kwargs.get("init_data", np.random.uniform(-10, 10, (60, para_size)))
+    init_data = kwargs.get(
+        "init_data", [np.random.uniform(-10, 10, para_size) for _ in range(60)]
+    )
     max_iter = kwargs.get("max_iter", 20)
 
     sample_x = init_data
-    sample_y = np.array([func(para) for para in sample_x])
+    sample_y = [func(para) for para in sample_x]
     optimal = [sample_x[np.argmin(sample_y)], np.min(sample_y)]
 
     print("Training with random search")
@@ -237,8 +240,8 @@ def random_search(func, x0, callback=None, **kwargs):
         if y < optimal[1]:
             optimal = [x0, y]
 
-        sample_x = np.vstack([sample_x, x0])
-        sample_y = np.append(sample_y, y)
+        sample_x += [x0]
+        sample_y += [y]
 
     res.x = np.copy(optimal[0])
     res.fun = np.copy(optimal[1])
