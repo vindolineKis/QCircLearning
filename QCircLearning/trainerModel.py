@@ -6,6 +6,7 @@ from torch.utils.data import DataLoader
 import numpy as np
 from scipy.optimize import minimize, OptimizeResult
 from typing import List, Callable
+from .utils import data_augment
 
 
 class TrainerModel(nn.Module):
@@ -121,13 +122,6 @@ def NN_opt(func, x0, callback=None, **kwargs):
             TrainerModel.simple_model((para_size,)),
         ],
     )
-    scheduler_kwargs = kwargs.get("scheduler_kwargs", {})
-    scheduler_kw = {
-        "mode": scheduler_kwargs.get("mode", "min"),
-        "factor": scheduler_kwargs.get("factor", 0.5),
-        "patience": scheduler_kwargs.get("patience", 100),
-        "min_lr": scheduler_kwargs.get("min_lr", 1e-6),
-    }
 
     sample_x = init_data
     sample_y = [func(para) for para in sample_x]
@@ -141,11 +135,6 @@ def NN_opt(func, x0, callback=None, **kwargs):
         sys.stdout.flush()
 
         optimizer = optim.Adam(model.parameters(), lr=1e-4)
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer,
-            **scheduler_kw,
-        )
-        precision_threshold = kwargs.get("precision_threshold", 1e-8)
 
         for iteration in range(max_iter):
             res.nit += 1
@@ -174,13 +163,7 @@ def NN_opt(func, x0, callback=None, **kwargs):
                         f"Epoch {epoch + 1}/{classical_epochs}, Average Loss: {total_loss:.1e}"
                     )
                     sys.stdout.flush()
-            # scheduler.step(total_loss)
-            # current_lr = scheduler.get_last_lr()[0]
-            # if current_lr < precision_threshold:
-            #     print(
-            #         f"Training stopped as learning rate reached precision threshold: {current_lr:.1e}"
-            #     )
-            #     break
+
             # Prediction and updating optimal parameters
             x0 = optimal[0]
             prediction0 = back_minimize(model, x0=x0, method="L-BFGS-B", **kwargs)
@@ -188,13 +171,9 @@ def NN_opt(func, x0, callback=None, **kwargs):
             res.nfev += 1
 
             optimal = [prediction0, y0] if y0 < optimal[1] else optimal
-            
-            # TODO: become a data augmentation function (data, n_points) -> new_data
-            predictions = [
-                prediction0,
-                prediction0 + np.pi * 2,
-                prediction0 - np.pi * 2,
-            ]
+
+            augment_points = kwargs.get("augment_points", 2)
+            predictions = data_augment(prediction0, augment_points, shift=np.pi * 2)
             sample_x += predictions
             sample_y += [y0] * len(predictions)
 
