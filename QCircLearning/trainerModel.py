@@ -41,19 +41,6 @@ class TrainerModel(nn.Module):
             name="default_model",
         )
 
-    @staticmethod
-    def simple_model(input_shape: tuple):
-        return TrainerModel(
-            layers=[
-                nn.Linear(input_shape[0], 32),
-                nn.ELU(),
-                nn.Linear(32, 8),
-                nn.Sigmoid(),
-                nn.Linear(8, 1),
-            ],
-            name="simple_model",
-        )
-
 
 def back_minimize(
     model, x0: np.ndarray = None, method: str = "L-BFGS-B", verbose: int = 0, **kwargs
@@ -103,8 +90,6 @@ def back_minimize(
 def NN_opt(func, x0, callback=None, **kwargs):
     para_size = len(x0)
     res = OptimizeResult(nfev=0, nit=0)
-    res.nfev = 0
-    res.nit = 0
 
     # Default values
     init_data = kwargs.get(
@@ -127,18 +112,21 @@ def NN_opt(func, x0, callback=None, **kwargs):
     sample_y = [func(para) for para in sample_x]
     optimal = [sample_x[np.argmin(sample_y)], np.min(sample_y)]
 
-    print("Training with the neural networks")
-    sys.stdout.flush()
+    if verbose:
+        print("Training with the neural networks")
+        sys.stdout.flush()
 
     for model in nn_models:
-        print(model)
-        sys.stdout.flush()
+        if verbose:
+            print(model)
+            sys.stdout.flush()
 
         optimizer = optim.Adam(model.parameters(), lr=1e-4)
 
         for iteration in range(max_iter):
             res.nit += 1
-            print(f"Iteration {iteration + 1}/{max_iter}")
+            if verbose:
+                print(f"Iteration {iteration + 1}/{max_iter}")
 
             data_loader = DataLoader(
                 list(zip(sample_x, sample_y)), batch_size=batch_size, shuffle=True
