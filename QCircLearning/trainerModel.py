@@ -104,7 +104,6 @@ def NN_opt(func, x0, callback=None, **kwargs):
         "NN_Models",
         [
             TrainerModel.default_model((para_size,)),
-            TrainerModel.simple_model((para_size,)),
         ],
     )
 
@@ -126,7 +125,7 @@ def NN_opt(func, x0, callback=None, **kwargs):
         for iteration in range(max_iter):
             res.nit += 1
             if verbose:
-                print(f"Iteration {iteration + 1}/{max_iter}")
+                print(f"Run ID: {kwargs['run_id']}, Iteration {iteration + 1}/{max_iter}")
 
             data_loader = DataLoader(
                 list(zip(sample_x, sample_y)), batch_size=batch_size, shuffle=True
@@ -148,7 +147,7 @@ def NN_opt(func, x0, callback=None, **kwargs):
                 total_loss /= len(data_loader.dataset)
                 if verbose:
                     print(
-                        f"Epoch {epoch + 1}/{classical_epochs}, Average Loss: {total_loss:.1e}"
+                        f"Run ID: {kwargs['run_id']}, Epoch {epoch + 1}/{classical_epochs}, Average Loss: {total_loss:.1e}"
                     )
                     sys.stdout.flush()
 
