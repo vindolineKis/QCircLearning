@@ -106,7 +106,6 @@ def NN_opt(func, x0, callback=None, **kwargs):
             TrainerModel.default_model((para_size,)),
         ],
     )
-
     sample_x = init_data
     sample_y = [func(para) for para in sample_x]
     optimal = [sample_x[np.argmin(sample_y)], np.min(sample_y)]
@@ -120,7 +119,7 @@ def NN_opt(func, x0, callback=None, **kwargs):
             print(model)
             sys.stdout.flush()
 
-        optimizer = optim.Adam(model.parameters(), lr=1e-4)
+        optimizer = optim.Adam(model.parameters(), lr=kwargs.get("lr", 1e-4))
 
         for iteration in range(max_iter):
             res.nit += 1
@@ -138,12 +137,12 @@ def NN_opt(func, x0, callback=None, **kwargs):
                     batch_x, batch_y = batch_x.to(device), batch_y.to(device)
                     optimizer.zero_grad()
                     loss = model(batch_x, batch_y)
-                    total_loss += loss.item() * batch_y.size(0)
-
                     loss.backward()
                     # print the gradients
                     # print(model.model[0].weight.grad)
                     optimizer.step()
+                    total_loss += loss.item() * batch_y.size(0)
+
                 total_loss /= len(data_loader.dataset)
                 if verbose:
                     print(
