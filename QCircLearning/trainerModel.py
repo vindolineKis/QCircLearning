@@ -44,6 +44,22 @@ class TrainerModel(nn.Module):
         )
 
 
+def model_train(model, data_loader, optimizer, device):
+    model.train()
+    total_loss = 0.0
+
+    for batch_x, batch_y in data_loader:
+        batch_x, batch_y = batch_x.to(device), batch_y.to(device)
+        optimizer.zero_grad()
+        loss = model(batch_x, batch_y)
+        loss.backward()
+        optimizer.step()
+        total_loss += loss.item() * batch_y.size(0)
+
+    total_loss /= len(data_loader.dataset)
+    return total_loss
+
+
 def NN_opt(func, x0, callback=None, **kwargs):
     para_size = len(x0)
     res = OptimizeResult(nfev=0, nit=0)
@@ -90,19 +106,7 @@ def NN_opt(func, x0, callback=None, **kwargs):
             )
             model.train()
             for epoch in range(classical_epochs):
-                total_loss = 0.0
-
-                for batch_x, batch_y in data_loader:
-                    batch_x, batch_y = batch_x.to(device), batch_y.to(device)
-                    optimizer.zero_grad()
-                    loss = model(batch_x, batch_y)
-                    loss.backward()
-                    # print the gradients
-                    # print(model.model[0].weight.grad)
-                    optimizer.step()
-                    total_loss += loss.item() * batch_y.size(0)
-
-                total_loss /= len(data_loader.dataset)
+                total_loss = model_train(model, data_loader, optimizer, device)
                 if verbose:
                     print(
                         f"Run ID: {kwargs['run_id']}, Epoch {epoch + 1}/{classical_epochs}, Average Loss: {total_loss:.1e}"
