@@ -1,0 +1,5 @@
+qiskit >= 1.0.0
+qiskit-aer >= 0.10
+torch >= 2.0.0
+pylatexenc >= 2.8
+matplotlib >= 3.0.0
