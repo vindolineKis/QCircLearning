@@ -7,7 +7,6 @@ import numpy as np
 from scipy.optimize import minimize, OptimizeResult
 from typing import List, Callable
 from .utils import data_augment
-import math
 
 class TrainerModel(nn.Module):
     def __init__(self, layers: List[nn.Module] = None, name: str = None):
