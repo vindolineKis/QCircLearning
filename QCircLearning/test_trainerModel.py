@@ -1,3 +1,5 @@
+import os
+import random
 import pytest
 import numpy as np
 import torch
@@ -8,6 +10,16 @@ import torch.optim as optim
 from .circuit_struct import VCircuitConstructor
 from .evaluate import Evaluator
 
+# 设置随机种子
+SEED = 42
+os.environ["PYTHONHASHSEED"] = str(SEED)
+random.seed(SEED)
+np.random.seed(SEED)
+torch.manual_seed(SEED)
+torch.cuda.manual_seed_all(SEED)
+# 确定性操作
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
 
 @pytest.fixture
 def toy_network():
