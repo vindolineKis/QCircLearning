@@ -39,6 +39,8 @@ class Optimizer:
 
         method = method or self.method
         if callable(method):
+          
             return method(min_func, x0, callback=callback, **kwargs)
         else:
+            
             return minimize(min_func, x0, method=method, callback=callback, options=kwargs)
