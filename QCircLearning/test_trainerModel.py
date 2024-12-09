@@ -21,6 +21,7 @@ torch.cuda.manual_seed_all(SEED)
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
+
 @pytest.fixture
 def toy_network():
     return TrainerModel(
@@ -63,9 +64,9 @@ def test_model_train_full_random(setup):
         print("Epoch: ", i, "Loss: ", total_loss)
         if total_loss < best_loss:
             best_loss = total_loss
-    assert best_loss < 1e-10, "Loss should be small enough"
 
     print(best_loss)
+    assert best_loss < 1e-10, "Loss should be small enough"
 
 
 def test_model_train_with_circ(setup):
@@ -78,7 +79,12 @@ def test_model_train_with_circ(setup):
     cost = lambda x: 1 - evaluator.evaluate(x)
 
     sample_x = [np.random.uniform(-2 * np.pi, 2 * np.pi, 5) for _ in range(num_point)]
-    sample_y = [np.array(cost(x)).reshape(1,) for x in sample_x]
+    sample_y = [
+        np.array(cost(x)).reshape(
+            1,
+        )
+        for x in sample_x
+    ]
     data_loader = DataLoader(
         list(zip(sample_x, sample_y)), batch_size=batch_size, shuffle=True
     )
@@ -88,6 +94,6 @@ def test_model_train_with_circ(setup):
         print("Epoch: ", i, "Loss: ", total_loss)
         if total_loss < best_loss:
             best_loss = total_loss
-    assert best_loss < 1e-10, "Loss should be small enough"
 
     print(best_loss)
+    assert best_loss < 1e-10, "Loss should be small enough"
