@@ -11,7 +11,7 @@ from .circuit_struct import VCircuitConstructor
 from .evaluate import Evaluator
 
 # 设置随机种子
-SEED = 42
+SEED = 45
 os.environ["PYTHONHASHSEED"] = str(SEED)
 random.seed(SEED)
 np.random.seed(SEED)
@@ -23,7 +23,6 @@ torch.backends.cudnn.benchmark = False
 
 @pytest.fixture
 def toy_network():
-    torch.manual_seed(42)
     return TrainerModel(
         layers=[
             nn.Linear(5, 96),
