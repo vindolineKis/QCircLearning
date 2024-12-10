@@ -1,6 +1,6 @@
 from pytest import approx
 
-from evaluate import gate_fidelity_circuit,gate_fidelity_def,gate_fidelity_qiskit
+from .evaluate import gate_fidelity_circuit,gate_fidelity_def,gate_fidelity_qiskit
 
 from qiskit.quantum_info import random_unitary
 from qiskit.circuit import QuantumCircuit
