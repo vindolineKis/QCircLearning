@@ -7,7 +7,8 @@ import numpy as np
 from .back_minimizer import BackMinimizer
 from scipy.optimize import minimize, OptimizeResult
 from typing import List, Callable
-from .utils import data_augment
+from QCircLearning.utils import data_augment, EarlyStopping
+
 
 class TrainerModel(nn.Module):
     def __init__(self, layers: List[nn.Module] = None, name: str = None):
@@ -26,8 +27,7 @@ class TrainerModel(nn.Module):
             return pred
 
     def __str__(self):
-        model_structure = self.model.__str__()
-        return f"TrainerModel(name={self.name}):\n{model_structure}"
+        return f"TrainerModel(name={self.name}):\n{self.model.__str__()}"
 
     def __repr__(self):
         return self.__str__()
@@ -65,29 +65,6 @@ def model_train(model, data_loader, optimizer, device):
     total_loss /= len(data_loader.dataset)
     return total_loss
 
-class EarlyStopping:
-    def __init__(self, patience=5, min_delta=0.0, verbose=False):
-        self.patience = patience
-        self.min_delta = min_delta
-        self.verbose = verbose
-        self.best_loss = None
-        self.counter = 0
-        self.early_stop = False
-
-    def __call__(self, current_loss):
-        if self.best_loss is None:
-            self.best_loss = current_loss
-        elif current_loss < self.best_loss - self.min_delta:
-            self.best_loss = current_loss
-            self.counter = 0
-        else:
-            self.counter += 1
-            if self.verbose:
-                print(f"EarlyStopping counter: {self.counter}/{self.patience}")
-            if self.counter >= self.patience:
-                self.early_stop = True
-
-
 def NN_opt(func, x0, callback=None, **kwargs):
     para_size = len(x0)
     res = OptimizeResult(nfev=0, nit=0)
@@ -109,12 +86,8 @@ def NN_opt(func, x0, callback=None, **kwargs):
     )
     patience = kwargs.get("patience", 5)
     min_delta = kwargs.get("min_delta", 0.0)
-    print("Patience: ", patience)
-    print("Min Delta: ", min_delta)
-
+    # early_stopping
     early_stopping = EarlyStopping(patience=patience, min_delta=min_delta,verbose=verbose)
-    # print(f"Early stopping: {early_stopping}")
-    print(f"patience: {early_stopping.patience}, min_delta: {early_stopping.min_delta}, verbose: {early_stopping.verbose}")
     sample_x = init_data
     sample_y = [func(para) for para in sample_x]
     optimal = [sample_x[np.argmin(sample_y)], np.min(sample_y)]
@@ -130,7 +103,6 @@ def NN_opt(func, x0, callback=None, **kwargs):
         for iteration in range(max_iter):
             res.nit += 1
             print(f"Iteration {iteration + 1}/{max_iter}")
-            print(f"batch_size: {batch_size}")
             data_loader = DataLoader(
                 list(zip(sample_x, sample_y)), batch_size=batch_size, shuffle=True
             )
@@ -138,9 +110,9 @@ def NN_opt(func, x0, callback=None, **kwargs):
             for epoch in range(classical_epochs):
                 total_loss = model_train(model, data_loader, optimizer, device)
                 early_stopping(total_loss)
-                if early_stopping.early_stop:
-                    print(f"Early stopping triggered at iteration {iteration + 1}, epoch {epoch + 1}")
-                    break
+                # if early_stopping.early_stop:
+                #     print(f"Early stopping triggered at iteration {iteration + 1}, epoch {epoch + 1}")
+                #     break
                 if verbose:
                     print(
                         f"Run ID: {kwargs['run_id']}, Epoch {epoch + 1}/{classical_epochs}, Average Loss: {total_loss:.1e}"
@@ -161,9 +133,9 @@ def NN_opt(func, x0, callback=None, **kwargs):
 
             augment_points = kwargs.get("augment_points", 2)
             predictions = data_augment(prediction0, augment_points, shift=np.pi * 2)
-            for pred in predictions:
-                if not np.isfinite(func(pred)):  # Check if `func` can handle the augmented data
-                    print(f"Invalid prediction: {pred}")
+            # for pred in predictions:
+            #     if not np.isfinite(func(pred)):  # Check if `func` can handle the augmented data
+            #         print(f"Invalid prediction: {pred}")
 
             sample_x += predictions
             sample_y += [y0] * len(predictions)
