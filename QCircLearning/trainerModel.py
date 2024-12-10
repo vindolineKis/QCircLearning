@@ -27,7 +27,7 @@ class TrainerModel(nn.Module):
             return pred
 
     def __str__(self):
-        return f"TrainerModel(name={self.name}):\n{self.model.__str__()}"
+        return f"TrainerModel(name={self.name}):\n{self.model}"
 
     def __repr__(self):
         return self.__str__()
@@ -91,18 +91,24 @@ def NN_opt(func, x0, callback=None, **kwargs):
     sample_x = init_data
     sample_y = [func(para) for para in sample_x]
     optimal = [sample_x[np.argmin(sample_y)], np.min(sample_y)]
-    print(f"Training with the neural networks")
-    sys.stdout.flush()
+    if verbose:
+        print(f"Training with the neural networks")
+        sys.stdout.flush()
 
     for model in nn_models:
-        print(model)
+        if verbose:
+            print(model)
         sys.stdout.flush()
 
         optimizer = optim.Adam(model.parameters(), lr=kwargs.get("lr", 1e-4))
 
         for iteration in range(max_iter):
             res.nit += 1
-            print(f"Iteration {iteration + 1}/{max_iter}")
+            sys.stdout.flush()
+            if verbose:
+                print("Training with the neural networks")
+                sys.stdout.flush()
+
             data_loader = DataLoader(
                 list(zip(sample_x, sample_y)), batch_size=batch_size, shuffle=True
             )
@@ -154,12 +160,12 @@ def random_search(func, x0, callback=None, **kwargs):
         "init_data", [np.random.uniform(-10, 10, para_size) for _ in range(60)]
     )
     max_iter = kwargs.get("max_iter", 20)
-
+    verbose = kwargs.get("verbose", 0)
     sample_x = init_data
     sample_y = [func(para) for para in sample_x]
     optimal = [sample_x[np.argmin(sample_y)], np.min(sample_y)]
-
-    print("Training with random search")
+    if verbose:
+        print("Training with random search")
     sys.stdout.flush()
 
     for _ in range(max_iter):
