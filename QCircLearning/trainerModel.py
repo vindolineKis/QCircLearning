@@ -105,6 +105,9 @@ def NN_opt(func, x0, callback=None, **kwargs):
 
         for iteration in range(max_iter):
             res.nit += 1
+            if verbose:
+                print(f"Run ID: {kwargs['run_id']}, Iteration {iteration + 1}/{max_iter}")
+                sys.stdout.flush()
             data_loader = DataLoader(
                 list(zip(sample_x, sample_y)), batch_size=batch_size, shuffle=True
             )
