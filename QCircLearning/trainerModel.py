@@ -7,7 +7,8 @@ import numpy as np
 from .back_minimizer import BackMinimizer
 from scipy.optimize import minimize, OptimizeResult
 from typing import List, Callable
-from .utils import data_augment, EarlyStopping
+from .utils import data_augmentation, EarlyStopping
+
 
 class TrainerModel(nn.Module):
     def __init__(self, layers: List[nn.Module] = None, name: str = None):
@@ -87,8 +88,10 @@ def NN_opt(func, x0, callback=None, **kwargs):
     patience = kwargs.get("patience", 5)
     min_delta = kwargs.get("min_delta", 0.0)
 
-    early_stopping = EarlyStopping(patience=patience, min_delta=min_delta,verbose=verbose)
-    
+    early_stopping = EarlyStopping(
+        patience=patience, min_delta=min_delta, verbose=verbose
+    )
+
     sample_x = init_data
     sample_y = [func(para) for para in sample_x]
     optimal = [sample_x[np.argmin(sample_y)], np.min(sample_y)]
@@ -101,12 +104,14 @@ def NN_opt(func, x0, callback=None, **kwargs):
             print(model)
             sys.stdout.flush()
 
-        optimizer = optim.Adam(model.parameters(), lr=kwargs.get("lr",1e-4))
+        optimizer = optim.Adam(model.parameters(), lr=kwargs.get("lr", 1e-4))
 
         for iteration in range(max_iter):
             res.nit += 1
             if verbose:
-                print(f"Run ID: {kwargs['run_id']}, Iteration {iteration + 1}/{max_iter}")
+                print(
+                    f"Run ID: {kwargs['run_id']}, Iteration {iteration + 1}/{max_iter}"
+                )
                 sys.stdout.flush()
             data_loader = DataLoader(
                 list(zip(sample_x, sample_y)), batch_size=batch_size, shuffle=True
@@ -128,26 +133,23 @@ def NN_opt(func, x0, callback=None, **kwargs):
                     )
                     sys.stdout.flush()
 
-            # Prediction and updating optimal parameters
+            # data augmentation
             model.eval()
-            x0 = optimal[0]
+            opt_x = optimal[0]
+
             backminimizer = BackMinimizer(model)
-            prediction0 = backminimizer.back_minimize(
-                x0=x0, method="L-BFGS-B", **kwargs
+            new_data_x, new_data_y = data_augmentation(
+                opt_x, func, backminimizer, kwargs
             )
-            y0 = func(prediction0)
-            res.nfev += 1
+            res.nfev += kwargs.get("noise_augment_points", 0) + 1
 
-            optimal = [prediction0, y0] if y0 < optimal[1] else optimal
-
-            augment_points = kwargs.get("augment_points", 2)
-            predictions = data_augment(prediction0, augment_points, shift=np.pi * 2)
             # for pred in predictions:
             #     if not np.isfinite(func(pred)):  # Check if `func` can handle the augmented data
             #         print(f"Invalid prediction: {pred}")
 
-            sample_x += predictions
-            sample_y += [y0] * len(predictions)
+            sample_x += new_data_x
+            sample_y += new_data_y
+            optimal = [sample_x[np.argmin(sample_y)], np.min(sample_y)]
 
     res.x = np.copy(optimal[0])
     res.fun = np.copy(optimal[1])
@@ -168,7 +170,7 @@ def random_search(func, x0, callback=None, **kwargs):
     sample_y = [func(para) for para in sample_x]
     optimal = [sample_x[np.argmin(sample_y)], np.min(sample_y)]
     if verbose:
-        print("Training with random search")    
+        print("Training with random search")
     sys.stdout.flush()
 
     for _ in range(max_iter):
