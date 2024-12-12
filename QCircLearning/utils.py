@@ -49,7 +49,7 @@ class EarlyStopping:
         self.verbose = verbose
         self.best_loss = None
         self.counter = 0
-        self.early_stop = False
+        # self.early_stop = False
 
     def __call__(self, current_loss):
         if self.best_loss is None:
@@ -63,3 +63,4 @@ class EarlyStopping:
                 print(f"EarlyStopping counter: {self.counter}/{self.patience}")
             if self.counter >= self.patience:
                 self.early_stop = True
+        return self.early_stop

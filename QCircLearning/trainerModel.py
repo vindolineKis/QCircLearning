@@ -119,8 +119,7 @@ def NN_opt(func, x0, callback=None, **kwargs):
             model.train()
             for epoch in range(classical_epochs):
                 total_loss = model_train(model, data_loader, optimizer, device)
-                early_stopping(total_loss)
-                if early_stopping.early_stop:
+                if early_stopping(total_loss):
                     if verbose:
                         print(
                             f"Early stopping at epoch {epoch + 1}/{classical_epochs}, Average Loss: {total_loss:.1e}"
