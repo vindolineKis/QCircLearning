@@ -8,6 +8,7 @@ from .back_minimizer import BackMinimizer
 from scipy.optimize import minimize, OptimizeResult
 from typing import List, Callable
 from .utils import data_augmentation, EarlyStopping
+import time
 
 
 class TrainerModel(nn.Module):
@@ -88,10 +89,6 @@ def NN_opt(func, x0, callback=None, **kwargs):
     patience = kwargs.get("patience", 5)
     min_delta = kwargs.get("min_delta", 0.0)
 
-    early_stopping = EarlyStopping(
-        patience=patience, min_delta=min_delta, verbose=verbose
-    )
-
     sample_x = init_data
     sample_y = [func(para) for para in sample_x]
     optimal = [sample_x[np.argmin(sample_y)], np.min(sample_y)]
@@ -113,10 +110,14 @@ def NN_opt(func, x0, callback=None, **kwargs):
                     f"Run ID: {kwargs['run_id']}, Iteration {iteration + 1}/{max_iter}"
                 )
                 sys.stdout.flush()
+            # start_time = time.time()
             data_loader = DataLoader(
                 list(zip(sample_x, sample_y)), batch_size=batch_size, shuffle=True
             )
             model.train()
+            early_stopping = EarlyStopping(
+                patience=patience, min_delta=min_delta, verbose=verbose
+            )
             for epoch in range(classical_epochs):
                 total_loss = model_train(model, data_loader, optimizer, device)
                 if early_stopping(total_loss):
@@ -141,7 +142,10 @@ def NN_opt(func, x0, callback=None, **kwargs):
                 opt_x, func, backminimizer, kwargs
             )
             res.nfev += kwargs.get("noise_augment_points", 0) + 1
-
+            # end_time = time.time()
+            # if verbose:
+            #     print(f"Time taken: {end_time - start_time:.2f}s")
+            #     sys.stdout.flush()
             # for pred in predictions:
             #     if not np.isfinite(func(pred)):  # Check if `func` can handle the augmented data
             #         print(f"Invalid prediction: {pred}")
