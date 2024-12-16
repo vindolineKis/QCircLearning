@@ -88,10 +88,6 @@ def NN_opt(func, x0, callback=None, **kwargs):
     patience = kwargs.get("patience", 5)
     min_delta = kwargs.get("min_delta", 0.0)
 
-    early_stopping = EarlyStopping(
-        patience=patience, min_delta=min_delta, verbose=verbose
-    )
-
     sample_x = init_data
     sample_y = [func(para) for para in sample_x]
     optimal = [sample_x[np.argmin(sample_y)], np.min(sample_y)]
@@ -117,10 +113,12 @@ def NN_opt(func, x0, callback=None, **kwargs):
                 list(zip(sample_x, sample_y)), batch_size=batch_size, shuffle=True
             )
             model.train()
+            early_stopping = EarlyStopping(
+                patience=patience, min_delta=min_delta, verbose=verbose
+            )
             for epoch in range(classical_epochs):
                 total_loss = model_train(model, data_loader, optimizer, device)
-                early_stopping(total_loss)
-                if early_stopping.early_stop:
+                if early_stopping(total_loss):
                     if verbose:
                         print(
                             f"Early stopping at epoch {epoch + 1}/{classical_epochs}, Average Loss: {total_loss:.1e}"
@@ -142,7 +140,6 @@ def NN_opt(func, x0, callback=None, **kwargs):
                 opt_x, func, backminimizer, kwargs
             )
             res.nfev += kwargs.get("noise_augment_points", 0) + 1
-
             # for pred in predictions:
             #     if not np.isfinite(func(pred)):  # Check if `func` can handle the augmented data
             #         print(f"Invalid prediction: {pred}")
