@@ -8,7 +8,6 @@ from .back_minimizer import BackMinimizer
 from scipy.optimize import minimize, OptimizeResult
 from typing import List, Callable
 from .utils import data_augmentation, EarlyStopping
-import time
 
 
 class TrainerModel(nn.Module):
@@ -110,7 +109,6 @@ def NN_opt(func, x0, callback=None, **kwargs):
                     f"Run ID: {kwargs['run_id']}, Iteration {iteration + 1}/{max_iter}"
                 )
                 sys.stdout.flush()
-            # start_time = time.time()
             data_loader = DataLoader(
                 list(zip(sample_x, sample_y)), batch_size=batch_size, shuffle=True
             )
@@ -142,10 +140,6 @@ def NN_opt(func, x0, callback=None, **kwargs):
                 opt_x, func, backminimizer, kwargs
             )
             res.nfev += kwargs.get("noise_augment_points", 0) + 1
-            # end_time = time.time()
-            # if verbose:
-            #     print(f"Time taken: {end_time - start_time:.2f}s")
-            #     sys.stdout.flush()
             # for pred in predictions:
             #     if not np.isfinite(func(pred)):  # Check if `func` can handle the augmented data
             #         print(f"Invalid prediction: {pred}")
