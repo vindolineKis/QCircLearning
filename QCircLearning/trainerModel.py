@@ -11,6 +11,7 @@ from typing import List, Callable
 from .utils import data_augmentation, EarlyStopping, reinitialize_network
 
 
+
 class TrainerModel(nn.Module):
     def __init__(self, layers: List[nn.Module] = None, name: str = None):
         super().__init__()
@@ -100,7 +101,6 @@ def NN_opt(func, x0, callback=None, **kwargs):
         if verbose:
             print(model)
             sys.stdout.flush()
-
         for iteration in range(max_iter):
             res.nit += 1
             if verbose:
@@ -114,12 +114,22 @@ def NN_opt(func, x0, callback=None, **kwargs):
             reinitialize_network(model)
             model.train()
             optimizer = optim.Adam(model.parameters(), lr=kwargs.get("lr", 1e-4))
+            optimizer = optim.Adam(model.parameters(), lr=kwargs.get("lr", 1e-4))
+            scheduler_kwargs = kwargs.get("scheduler_kwargs", {})
+            scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+                    optimizer, **scheduler_kwargs
+                    )
+            if verbose:
+                print(f"mode in scheduler: {scheduler.mode}")
+                print(f"Initial lr: {optimizer.param_groups[0]['lr']}")
+                sys.stdout.flush()
             early_stopping = EarlyStopping(
                 patience=patience, min_delta=min_delta, verbose=verbose
             )
             best_model_state = None
             for epoch in range(classical_epochs):
                 total_loss = model_train(model, data_loader, optimizer, device)
+                scheduler.step(total_loss)
                 if early_stopping(total_loss):
                     if verbose:
                         print(
@@ -127,7 +137,9 @@ def NN_opt(func, x0, callback=None, **kwargs):
                         )
                         sys.stdout.flush()
                     break
+                
                 if verbose:
+                    print(f"current lr: {optimizer.param_groups[0]['lr']}")
                     print(
                         f"Run ID: {kwargs['run_id']}, Epoch {epoch + 1}/{classical_epochs}, Average Loss: {total_loss:.1e}"
                     )
