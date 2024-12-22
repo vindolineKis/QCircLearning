@@ -10,7 +10,6 @@ from typing import List, Callable
 from .utils import data_augmentation, EarlyStopping
 
 
-
 class TrainerModel(nn.Module):
     def __init__(self, layers: List[nn.Module] = None, name: str = None):
         super().__init__()
@@ -118,11 +117,9 @@ def NN_opt(func, x0, callback=None, **kwargs):
                 list(zip(sample_x, sample_y)), batch_size=batch_size, shuffle=True
             )
             model.train()
-
             early_stopping = EarlyStopping(
                 patience=patience, min_delta=min_delta, verbose=verbose
             )
-            
             for epoch in range(classical_epochs):
                 total_loss = model_train(model, data_loader, optimizer, device)
                 scheduler.step(total_loss)
@@ -133,7 +130,6 @@ def NN_opt(func, x0, callback=None, **kwargs):
                         )
                         sys.stdout.flush()
                     break
-                
                 if verbose:
                     print(f"current lr: {optimizer.param_groups[0]['lr']}")
                     print(
@@ -141,7 +137,6 @@ def NN_opt(func, x0, callback=None, **kwargs):
                     )
                     sys.stdout.flush()
             
-
             # data augmentation
             model.eval()
             opt_x = optimal[0]
