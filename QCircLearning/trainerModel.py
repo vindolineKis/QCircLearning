@@ -11,7 +11,6 @@ from typing import List, Callable
 from .utils import data_augmentation, EarlyStopping, reinitialize_network
 
 
-
 class TrainerModel(nn.Module):
     def __init__(self, layers: List[nn.Module] = None, name: str = None):
         super().__init__()
@@ -137,7 +136,6 @@ def NN_opt(func, x0, callback=None, **kwargs):
                         )
                         sys.stdout.flush()
                     break
-                
                 if verbose:
                     print(f"current lr: {optimizer.param_groups[0]['lr']}")
                     print(
