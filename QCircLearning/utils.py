@@ -33,7 +33,7 @@ def data_augmentation(data, circ_evaluate, backminimizer, config):
         circ_output = circ_evaluate(refine_x)
 
         periodic_x = data_augment_periodic(
-            data, periodic_augment_points, shift=np.pi * 2
+            refine_x, periodic_augment_points, shift=np.pi * 2
         )
         periodic_y = [circ_output] * len(periodic_x)
         new_data_x += periodic_x
@@ -64,3 +64,15 @@ class EarlyStopping:
             if self.counter >= self.patience:
                 return True
         return False
+
+
+def reinitialize_network(model):
+    """
+    Re-initializes the parameters of a PyTorch network in place
+    (without constructing a new model).
+
+    model (nn.Module): The model to re-init.
+    """
+    for module in model.modules():
+        if hasattr(module, "reset_parameters"):
+            module.reset_parameters()
