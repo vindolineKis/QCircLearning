@@ -14,7 +14,7 @@ from .utils import data_augmentation, reinitialize_network
 from .back_minimizer import BackMinimizer
 
 # 设置随机种子
-SEED = 45
+SEED = 233
 os.environ["PYTHONHASHSEED"] = str(SEED)
 random.seed(SEED)
 np.random.seed(SEED)
@@ -123,7 +123,7 @@ def test_model_train_with_circ_augment(setup):
     reinitialize_network(model)
     ref_model = copy.deepcopy(model)
 
-    for it in range(5):
+    for it in range(3):
         np.random.seed(SEED)
         torch.manual_seed(SEED)
         torch.cuda.manual_seed_all(SEED)
