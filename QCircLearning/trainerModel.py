@@ -1,4 +1,5 @@
 import sys
+import copy
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -7,7 +8,7 @@ import numpy as np
 from .back_minimizer import BackMinimizer
 from scipy.optimize import minimize, OptimizeResult
 from typing import List, Callable
-from .utils import data_augmentation, EarlyStopping
+from .utils import data_augmentation, EarlyStopping, reinitialize_network
 
 
 class TrainerModel(nn.Module):
@@ -100,8 +101,6 @@ def NN_opt(func, x0, callback=None, **kwargs):
             print(model)
             sys.stdout.flush()
 
-        optimizer = optim.Adam(model.parameters(), lr=kwargs.get("lr", 1e-4))
-
         for iteration in range(max_iter):
             res.nit += 1
             if verbose:
@@ -112,10 +111,13 @@ def NN_opt(func, x0, callback=None, **kwargs):
             data_loader = DataLoader(
                 list(zip(sample_x, sample_y)), batch_size=batch_size, shuffle=True
             )
+            reinitialize_network(model)
             model.train()
+            optimizer = optim.Adam(model.parameters(), lr=kwargs.get("lr", 1e-4))
             early_stopping = EarlyStopping(
                 patience=patience, min_delta=min_delta, verbose=verbose
             )
+            best_model_state = None
             for epoch in range(classical_epochs):
                 total_loss = model_train(model, data_loader, optimizer, device)
                 if early_stopping(total_loss):
@@ -130,8 +132,11 @@ def NN_opt(func, x0, callback=None, **kwargs):
                         f"Run ID: {kwargs['run_id']}, Epoch {epoch + 1}/{classical_epochs}, Average Loss: {total_loss:.1e}"
                     )
                     sys.stdout.flush()
+                
+                best_model_state = copy.deepcopy(model.state_dict()) if early_stopping.reset else best_model_state
 
             # data augmentation
+            model.load_state_dict(best_model_state)
             model.eval()
             opt_x = optimal[0]
 
