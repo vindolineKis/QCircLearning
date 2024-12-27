@@ -51,6 +51,10 @@ class EarlyStopping:
         self.counter = 0
         # self.early_stop = False
 
+    @property
+    def reset(self):
+        return self.counter == 0
+
     def __call__(self, current_loss):
         if self.best_loss is None:
             self.best_loss = current_loss

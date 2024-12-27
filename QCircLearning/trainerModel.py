@@ -117,7 +117,7 @@ def NN_opt(func, x0, callback=None, **kwargs):
             early_stopping = EarlyStopping(
                 patience=patience, min_delta=min_delta, verbose=verbose
             )
-            best_model = None
+            best_model_state = None
             for epoch in range(classical_epochs):
                 total_loss = model_train(model, data_loader, optimizer, device)
                 if early_stopping(total_loss):
@@ -132,11 +132,11 @@ def NN_opt(func, x0, callback=None, **kwargs):
                         f"Run ID: {kwargs['run_id']}, Epoch {epoch + 1}/{classical_epochs}, Average Loss: {total_loss:.1e}"
                     )
                     sys.stdout.flush()
-                if early_stopping.counter == 0:
-                    best_model = copy.deepcopy(model)
+                
+                best_model_state = copy.deepcopy(model.state_dict()) if early_stopping.reset else best_model_state
 
             # data augmentation
-            model = best_model
+            model.load_state_dict(best_model_state)
             model.eval()
             opt_x = optimal[0]
 
