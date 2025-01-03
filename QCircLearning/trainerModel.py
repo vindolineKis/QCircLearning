@@ -113,7 +113,6 @@ def NN_opt(func, x0, callback=None, **kwargs):
             reinitialize_network(model)
             model.train()
             optimizer = optim.Adam(model.parameters(), lr=kwargs.get("lr", 1e-4))
-            optimizer = optim.Adam(model.parameters(), lr=kwargs.get("lr", 1e-4))
             scheduler_kwargs = kwargs.get("scheduler_kwargs", {})
             scheduler = optim.lr_scheduler.ReduceLROnPlateau(
                     optimizer, **scheduler_kwargs
