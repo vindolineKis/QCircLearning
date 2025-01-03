@@ -117,9 +117,11 @@ def NN_opt(func, x0, callback=None, **kwargs):
             scheduler = optim.lr_scheduler.ReduceLROnPlateau(
                     optimizer, **scheduler_kwargs
                     )
+            
             if verbose:
                 print(f"mode in scheduler: {scheduler.mode}")
-                print(f"Initial lr: {optimizer.param_groups[0]['lr']}")
+                print(f"factor in scheduler: {scheduler.factor}")
+                print(f"patience in scheduler: {scheduler.patience}")
                 sys.stdout.flush()
             early_stopping = EarlyStopping(
                 patience=patience, min_delta=min_delta, verbose=verbose
