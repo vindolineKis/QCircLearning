@@ -9,7 +9,7 @@ from .back_minimizer import BackMinimizer
 from scipy.optimize import minimize, OptimizeResult
 from typing import List, Callable
 from .utils import data_augmentation, EarlyStopping, reinitialize_network
-
+import time
 
 class TrainerModel(nn.Module):
     def __init__(self, layers: List[nn.Module] = None, name: str = None):
@@ -110,7 +110,7 @@ def NN_opt(func, x0, callback=None, **kwargs):
             data_loader = DataLoader(
                 list(zip(sample_x, sample_y)), batch_size=batch_size, shuffle=True
             )
-            reinitialize_network(model)
+            # reinitialize_network(model)
             model.train()
             optimizer = optim.Adam(model.parameters(), lr=kwargs.get("lr", 1e-4))
             scheduler_kwargs = kwargs.get("scheduler_kwargs", {})
@@ -125,7 +125,10 @@ def NN_opt(func, x0, callback=None, **kwargs):
                 patience=patience, min_delta=min_delta, verbose=verbose
             )
             best_model_state = None
+
             for epoch in range(classical_epochs):
+                # record the time cost for each epoch
+                start_time_epoch = time.time()
                 total_loss = model_train(model, data_loader, optimizer, device)
                 scheduler.step(total_loss)
                 if early_stopping(total_loss):
@@ -142,8 +145,18 @@ def NN_opt(func, x0, callback=None, **kwargs):
                     )
                     sys.stdout.flush()
                 
-                best_model_state = copy.deepcopy(model.state_dict()) if early_stopping.reset else best_model_state
 
+                # TODO: test deepcopy time
+                # record the time cost of deepcopy
+                start_time = time.time()
+                best_model_state = copy.deepcopy(model.state_dict()) if early_stopping.reset else best_model_state
+                if verbose:
+                    print(f"Deepcopy time: {time.time() - start_time}")
+                    print(f"Time cost of each epoch: {time.time() - start_time_epoch}")
+                    sys.stdout.flush()
+                # record the time cost of each epoch
+
+                
             # data augmentation
             model.load_state_dict(best_model_state)
             model.eval()
