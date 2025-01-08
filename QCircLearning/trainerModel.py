@@ -1,5 +1,6 @@
 import sys
 import copy
+import logging
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -68,6 +69,11 @@ def model_train(model, data_loader, optimizer, device):
 
 
 def NN_opt(func, x0, callback=None, **kwargs):
+
+    # logging
+    logger = logging.getLogger(__name__)
+    adapter = logging.LoggerAdapter(logger, {"run_id": kwargs["run_id"]})
+
     para_size = len(x0)
     res = OptimizeResult(nfev=0, nit=0)
 
@@ -100,6 +106,8 @@ def NN_opt(func, x0, callback=None, **kwargs):
         if verbose:
             print(model)
             sys.stdout.flush()
+
+        early_stop_epoch = []
         for iteration in range(max_iter):
             res.nit += 1
             if verbose:
@@ -107,33 +115,41 @@ def NN_opt(func, x0, callback=None, **kwargs):
                     f"Run ID: {kwargs['run_id']}, Iteration {iteration + 1}/{max_iter}"
                 )
                 sys.stdout.flush()
+
             data_loader = DataLoader(
                 list(zip(sample_x, sample_y)), batch_size=batch_size, shuffle=True
             )
-            reinitialize_network(model)
+
+            if kwargs.get("reinitialize_model", False):
+                reinitialize_network(model)
+
             model.train()
             optimizer = optim.Adam(model.parameters(), lr=kwargs.get("lr", 1e-4))
-            scheduler_kwargs = kwargs.get("scheduler_kwargs", {})
-            scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+            if kwargs.get("use_scheduler", False):
+                scheduler_kwargs = kwargs.get("scheduler_kwargs", {})
+                scheduler = optim.lr_scheduler.ReduceLROnPlateau(
                     optimizer, **scheduler_kwargs
-                    )
-            if verbose:
-                print(f"mode in scheduler: {scheduler.mode}")
-                print(f"Initial lr: {optimizer.param_groups[0]['lr']}")
-                sys.stdout.flush()
+                )
+                if verbose:
+                    print(f"mode in scheduler: {scheduler.mode}")
+                    print(f"Initial lr: {optimizer.param_groups[0]['lr']}")
+                    sys.stdout.flush()
+
             early_stopping = EarlyStopping(
                 patience=patience, min_delta=min_delta, verbose=verbose
             )
             best_model_state = None
             for epoch in range(classical_epochs):
                 total_loss = model_train(model, data_loader, optimizer, device)
-                scheduler.step(total_loss)
+                if kwargs.get("use_scheduler", False):
+                    scheduler.step(total_loss)
                 if early_stopping(total_loss):
+                    message = f"Iter {iteration+1}/{max_iter}, Early stopping at epoch {epoch + 1}/{classical_epochs}, Best Loss: {early_stopping.best_loss:.1e}"
                     if verbose:
-                        print(
-                            f"Early stopping at epoch {epoch + 1}/{classical_epochs}, Average Loss: {total_loss:.1e}"
-                        )
+                        print(f"Run id {kwargs['run_id']}, {message}")
                         sys.stdout.flush()
+                    adapter.info(message)
+                    early_stop_epoch.append(epoch)
                     break
                 if verbose:
                     print(f"current lr: {optimizer.param_groups[0]['lr']}")
@@ -141,8 +157,12 @@ def NN_opt(func, x0, callback=None, **kwargs):
                         f"Run ID: {kwargs['run_id']}, Epoch {epoch + 1}/{classical_epochs}, Average Loss: {total_loss:.1e}"
                     )
                     sys.stdout.flush()
-                
-                best_model_state = copy.deepcopy(model.state_dict()) if early_stopping.reset else best_model_state
+
+                best_model_state = (
+                    copy.deepcopy(model.state_dict())
+                    if early_stopping.reset
+                    else best_model_state
+                )
 
             # data augmentation
             model.load_state_dict(best_model_state)
@@ -161,6 +181,8 @@ def NN_opt(func, x0, callback=None, **kwargs):
             sample_x += new_data_x
             sample_y += new_data_y
             optimal = [sample_x[np.argmin(sample_y)], np.min(sample_y)]
+
+        adapter.info(f"Average early stopping epoch: {np.mean(early_stop_epoch)}")
 
     res.x = np.copy(optimal[0])
     res.fun = np.copy(optimal[1])
