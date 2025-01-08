@@ -21,19 +21,20 @@ def data_augmentation(data, circ_evaluate, backminimizer, config):
         raise ValueError("noise_augment_points should be greater than 0")
     periodic_augment_points = config.get("periodic_augment_points", 2)
 
+    refine_x = backminimizer.back_minimize(
+        x0=data, method="L-BFGS-B", **config
+    )
+
     new_data_x = []
     new_data_y = []
 
     for index in range(noise_augment_points + 1):
         noise_strengh = config.get("noise_strengh", 0.01)
-        circ_data_x = data_augment_noise(data, noise_strengh) if index != 0 else data
-        refine_x = backminimizer.back_minimize(
-            x0=circ_data_x, method="L-BFGS-B", **config
-        )
-        circ_output = circ_evaluate(refine_x)
+        circ_data_x = data_augment_noise(refine_x, noise_strengh) if index != 0 else refine_x
+        circ_output = circ_evaluate(circ_data_x)
 
         periodic_x = data_augment_periodic(
-            refine_x, periodic_augment_points, shift=np.pi * 2
+            circ_data_x, periodic_augment_points, shift=np.pi * 2
         )
         periodic_y = [circ_output] * len(periodic_x)
         new_data_x += periodic_x
