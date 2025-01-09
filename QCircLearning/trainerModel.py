@@ -109,7 +109,7 @@ def NN_opt(func, x0, callback=None, **kwargs):
 
         early_stop_epoch = []
         for iteration in range(max_iter):
-            res.nit += 1
+            # res.nit += 1
             if verbose:
                 print(
                     f"Run ID: {kwargs['run_id']}, Iteration {iteration + 1}/{max_iter}"
@@ -119,9 +119,12 @@ def NN_opt(func, x0, callback=None, **kwargs):
             data_loader = DataLoader(
                 list(zip(sample_x, sample_y)), batch_size=batch_size, shuffle=True
             )
-
             if kwargs.get("reinitialize_model", False):
                 reinitialize_network(model)
+                track=reinitialize_network(model)
+                if verbose:
+                    print(f"Run ID: {kwargs['run_id']}, Model reinitialized:{track}")  
+
 
             model.train()
             optimizer = optim.Adam(model.parameters(), lr=kwargs.get("lr", 1e-4))
@@ -165,26 +168,29 @@ def NN_opt(func, x0, callback=None, **kwargs):
 
 
                 # TODO: test deepcopy time
-                # record the time cost of deepcopy
-                start_time = time.time()
+            
+                start_time_deepcopy = time.time()
                 best_model_state = copy.deepcopy(model.state_dict()) if early_stopping.reset else best_model_state
+                # best_model_state = model.state_dict() if early_stopping.reset else best_model_state
                 if verbose:
-                    print(f"Deepcopy time: {time.time() - start_time}")
+                    print(f"Deepcopy time: {time.time() - start_time_deepcopy}")
                     print(f"Time cost of each epoch: {time.time() - start_time_epoch}")
                     sys.stdout.flush()
                 # record the time cost of each epoch
 
                 
-            # data augmentation
-            model.load_state_dict(best_model_state)
+        
+            # model.load_state_dict(best_model_state)
             model.eval()
             opt_x = optimal[0]
 
             backminimizer = BackMinimizer(model)
+
+            # data augmentation
             new_data_x, new_data_y = data_augmentation(
                 opt_x, func, backminimizer, kwargs
             )
-            res.nfev += kwargs.get("noise_augment_points", 0) + 1
+            # res.nfev += kwargs.get("noise_augment_points", 0) + 1
             # for pred in predictions:
             #     if not np.isfinite(func(pred)):  # Check if `func` can handle the augmented data
             #         print(f"Invalid prediction: {pred}")
@@ -218,11 +224,11 @@ def random_search(func, x0, callback=None, **kwargs):
     sys.stdout.flush()
 
     for _ in range(max_iter):
-        res.nit += 1
+        # res.nit += 1
 
         x0 = optimal[0] + np.random.normal(0, 0.02, para_size)
         y = func(x0)
-        res.nfev += 1
+        # res.nfev += 1
         sys.stdout.flush()
 
         if y < optimal[1]:
