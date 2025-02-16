@@ -1,11 +1,19 @@
 import numpy as np
 from functools import wraps
+import torch
 
 
 def data_augment_periodic(data, n_points, shift):
     if n_points < 0:
         raise ValueError("n_points should be greater than 0")
     new_data = [data]
+    # new_data = np.vstack(
+                #   [prediction0, prediction0 + np.pi * 2, prediction0 - np.pi * 2]
+                # )
+    # for i in range(n_points):
+    #     new_data.append(data + shift * len(data))
+    #     new_data.append(data - shift * len(data))
+
     for _ in range(n_points):
         new_data.append(data + np.random.choice([-1, 0, 1], len(data)) * shift)
     return new_data
@@ -21,7 +29,7 @@ def data_augmentation(data, circ_evaluate, backminimizer, config):
     if noise_augment_points < 0:
         raise ValueError("noise_augment_points should be greater than 0")
     periodic_augment_points = config.get("periodic_augment_points", 2)
-
+    
     refine_x = backminimizer.back_minimize(
         x0=data, method="L-BFGS-B", **config
     )
@@ -97,3 +105,24 @@ def reinitialize_network(model):
             module.reset_parameters()
             return True
     return False
+
+
+# def embeding_data(data, config,layers=1):
+
+#     if config.get("embeding_data", False):
+
+#         def rz_embedding(theta, qubit):
+#             theta = theta.view(-1, 1, 1)
+#             cos = torch.cos(theta / 2)
+#             sin = torch.sin(theta / 2)
+#             return torch.cat([torch.cat([cos - 1j * sin, torch.zeros_like(cos)], dim=2),
+#                               torch.cat([torch.zeros_like(cos), cos + 1j * sin], dim=2)], dim=1)
+#         def ry_embedding(theta, qubit):
+#             theta = theta.view(-1, 1, 1)
+#             cos = torch.cos(theta / 2)
+#             sin = torch.sin(theta / 2)
+#             return torch.cat([torch.cat([cos, -sin], dim=2),
+#                               torch.cat([sin, cos], dim=2)], dim=1)
+#         for i in layers:
+            
+#     return data

@@ -101,6 +101,8 @@ def NN_opt(func, x0, callback=None, **kwargs):
     if verbose:
         print(f"Training with the neural networks")
     sys.stdout.flush()
+    # # embeding_data(sample_x, kwargs)
+    # sample_x = embeding_data(sample_x, kwargs)
 
     for model in nn_models:
         if verbose:
@@ -115,7 +117,6 @@ def NN_opt(func, x0, callback=None, **kwargs):
                     f"Run ID: {kwargs['run_id']}, Iteration {iteration + 1}/{max_iter}"
                 )
                 sys.stdout.flush()
-
             data_loader = DataLoader(
                 list(zip(sample_x, sample_y)), batch_size=batch_size, shuffle=True
             )
@@ -182,7 +183,7 @@ def NN_opt(func, x0, callback=None, **kwargs):
         
             # model.load_state_dict(best_model_state)
             model.eval()
-            opt_x = optimal[0]
+            opt_x = optimal[0]+np.random.normal(0, 0.02, para_size)
 
             backminimizer = BackMinimizer(model)
 
