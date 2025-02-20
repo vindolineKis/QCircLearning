@@ -5,7 +5,18 @@ import torch.optim as optim
 import numpy as np
 from scipy.optimize import minimize, OptimizeResult
 from typing import List, Callable
+import random
+import os
 
+
+SEED = 42
+os.environ["PYTHONHASHSEED"] = str(SEED)
+random.seed(SEED)
+np.random.seed(SEED)
+torch.manual_seed(SEED)
+torch.cuda.manual_seed_all(SEED)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
 
 class NNOptimizer(nn.Module):
 

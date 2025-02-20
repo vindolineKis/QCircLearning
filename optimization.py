@@ -1,9 +1,23 @@
 from typing import Union, Callable, Optional
 from scipy.optimize import minimize, OptimizeResult
 from cust_optimizer import NNOptimizer, RSOptimizer
+import torch
+import numpy as np
+import random
+import os
 
 
 class Optimization:
+    
+    SEED = 42
+    os.environ["PYTHONHASHSEED"] = str(SEED)
+    random.seed(SEED)
+    np.random.seed(SEED)
+    torch.manual_seed(SEED)
+    torch.cuda.manual_seed_all(SEED)
+    # 确定性操作
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
     def __init__(self, method: Optional[Union[str, Callable]] = "BFGS") -> None:
         self.method = method
