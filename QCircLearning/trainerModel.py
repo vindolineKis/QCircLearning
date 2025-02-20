@@ -23,7 +23,7 @@ class TrainerModel(nn.Module):
     def forward(self, x, y=None):
         pred = self.model(x)
         if y is not None:
-            loss = self.loss_fn(pred, y)
+            loss = self.loss_fn(pred, y.unsqueeze(-1))
             return loss
         else:
             return pred
@@ -110,6 +110,7 @@ def NN_opt(func, x0, callback=None, **kwargs):
             sys.stdout.flush()
 
         early_stop_epoch = []
+        
         for iteration in range(max_iter):
             # res.nit += 1
             if verbose:

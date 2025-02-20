@@ -10,12 +10,12 @@ def data_augment_periodic(data, n_points, shift):
     # new_data = np.vstack(
                 #   [prediction0, prediction0 + np.pi * 2, prediction0 - np.pi * 2]
                 # )
-    # for i in range(n_points):
-    #     new_data.append(data + shift * len(data))
-    #     new_data.append(data - shift * len(data))
+    for i in range(n_points):
+        new_data.append(data + shift)
+        new_data.append(data - shift)
 
-    for _ in range(n_points):
-        new_data.append(data + np.random.choice([-1, 0, 1], len(data)) * shift)
+    # for _ in range(n_points):
+    #     new_data.append(data + np.random.choice([-1, 0, 1], len(data)) * shift)
     return new_data
 
 
