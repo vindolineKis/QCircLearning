@@ -9,14 +9,14 @@ import random
 import os
 
 
-SEED = 42
-os.environ["PYTHONHASHSEED"] = str(SEED)
-random.seed(SEED)
-np.random.seed(SEED)
-torch.manual_seed(SEED)
-torch.cuda.manual_seed_all(SEED)
-torch.backends.cudnn.deterministic = True
-torch.backends.cudnn.benchmark = False
+# SEED = 42
+# os.environ["PYTHONHASHSEED"] = str(SEED)
+# random.seed(SEED)
+# np.random.seed(SEED)
+# torch.manual_seed(SEED)
+# torch.cuda.manual_seed_all(SEED)
+# torch.backends.cudnn.deterministic = True
+# torch.backends.cudnn.benchmark = False
 
 class NNOptimizer(nn.Module):
 
@@ -101,7 +101,7 @@ class NNOptimizer(nn.Module):
                 NNOptimizer.simple_model((para_size,)),
             ],
         )
-        patience = kwargs.get("patience", 100)
+        # patience = kwargs.get("patience", 100)
 
         sample_y, sample_x = np.array([]), np.empty((0, para_size))
         optimal = [None, float("inf")]
@@ -123,15 +123,15 @@ class NNOptimizer(nn.Module):
 
             criterion = nn.MSELoss()
             optimizer = optim.Adam(model.parameters(), lr=1e-4)
-            scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-                optimizer,
-                mode="min",
-                factor=0.5,
-                patience=patience,
-                verbose=True,
-                min_lr=1e-6,
-            )
-            precision_threshold = 1e-8
+            # scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+            #     optimizer,
+            #     mode="min",
+            #     factor=0.5,
+            #     patience=patience,
+            #     verbose=True,
+            #     min_lr=1e-6,
+            # )
+            # precision_threshold = 1e-8
 
             for iteration in range(max_iter):
                 res.nit += 1
@@ -168,13 +168,13 @@ class NNOptimizer(nn.Module):
                             f"Epoch {epoch + 1}/{classical_epochs}, Average Loss: {avg_loss:.1e}"
                         )
                         sys.stdout.flush()
-                scheduler.step(total_loss)
-                current_lr = optimizer.param_groups[0]["lr"]
-                if current_lr < precision_threshold:
-                    print(
-                        f"Training stopped as learning rate reached precision threshold: {current_lr:.1e}"
-                    )
-                    break
+                # scheduler.step(total_loss)
+                # current_lr = optimizer.param_groups[0]["lr"]
+                # if current_lr < precision_threshold:
+                #     print(
+                #         f"Training stopped as learning rate reached precision threshold: {current_lr:.1e}"
+                #     )
+                #     break
                 # Prediction and updating optimal parameters
                 x0 = optimal[0]
                 prediction0 = model.back_searching(
