@@ -132,14 +132,14 @@ def NN_opt(func, x0, callback=None, **kwargs):
             if kwargs.get("use_scheduler", False):
                 scheduler_kwargs = kwargs.get("scheduler_kwargs", {})
                 scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-                    optimizer, **scheduler_kwargs
-
-            if verbose:
-                print(f"mode in scheduler: {scheduler.mode}")
-                print(f"factor in scheduler: {scheduler.factor}")
-                print(f"Initial lr: {optimizer.param_groups[0]['lr']}")
-                print(f"patience in scheduler: {scheduler.patience}")
-                sys.stdout.flush()
+                    optimizer, **scheduler_kwargs)
+                
+                if verbose:
+                    print(f"mode in scheduler: {scheduler.mode}")
+                    print(f"factor in scheduler: {scheduler.factor}")
+                    print(f"Initial lr: {optimizer.param_groups[0]['lr']}")
+                    print(f"patience in scheduler: {scheduler.patience}")
+                    sys.stdout.flush()
 
             early_stopping = EarlyStopping(
                 patience=patience, min_delta=min_delta, verbose=verbose
@@ -222,7 +222,7 @@ def random_search(func, x0, callback=None, **kwargs):
     optimal = [sample_x[np.argmin(sample_y)], np.min(sample_y)]
     if verbose:
         print("Training with random search")
-    sys.stdout.flush()
+        sys.stdout.flush()
 
     for _ in range(max_iter):
         # res.nit += 1
