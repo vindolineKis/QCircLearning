@@ -135,12 +135,12 @@ def NN_opt(func, x0, callback=None, **kwargs):
                 scheduler = optim.lr_scheduler.ReduceLROnPlateau(
                     optimizer, **scheduler_kwargs)
                 
-                if verbose:
-                    print(f"mode in scheduler: {scheduler.mode}")
-                    print(f"factor in scheduler: {scheduler.factor}")
-                    print(f"Initial lr: {optimizer.param_groups[0]['lr']}")
-                    print(f"patience in scheduler: {scheduler.patience}")
-                    sys.stdout.flush()
+                # if verbose:
+                #     print(f"mode in scheduler: {scheduler.mode}")
+                #     print(f"factor in scheduler: {scheduler.factor}")
+                #     print(f"Initial lr: {optimizer.param_groups[0]['lr']}")
+                #     print(f"patience in scheduler: {scheduler.patience}")
+                #     sys.stdout.flush()
 
             early_stopping = EarlyStopping(
                 patience=patience, min_delta=min_delta, verbose=verbose
@@ -161,12 +161,12 @@ def NN_opt(func, x0, callback=None, **kwargs):
                     adapter.info(message)
                     early_stop_epoch.append(epoch)
                     break
-                if verbose:
-                    print(f"current lr: {optimizer.param_groups[0]['lr']}")
-                    print(
-                        f"Run ID: {kwargs['run_id']}, Epoch {epoch + 1}/{classical_epochs}, Average Loss: {total_loss:.1e}"
-                    )
-                    sys.stdout.flush()
+                # if verbose:
+                #     print(f"current lr: {optimizer.param_groups[0]['lr']}")
+                #     print(
+                #         f"Run ID: {kwargs['run_id']}, Epoch {epoch + 1}/{classical_epochs}, Average Loss: {total_loss:.1e}"
+                #     )
+                #     sys.stdout.flush()
 
 
                 # TODO: test deepcopy time
@@ -174,10 +174,10 @@ def NN_opt(func, x0, callback=None, **kwargs):
                 start_time_deepcopy = time.time()
                 best_model_state = copy.deepcopy(model.state_dict()) if early_stopping.reset else best_model_state
                 # best_model_state = model.state_dict() if early_stopping.reset else best_model_state
-                if verbose:
-                    print(f"Deepcopy time: {time.time() - start_time_deepcopy}")
-                    print(f"Time cost of each epoch: {time.time() - start_time_epoch}")
-                    sys.stdout.flush()
+                # if verbose:
+                #     print(f"Deepcopy time: {time.time() - start_time_deepcopy}")
+                #     print(f"Time cost of each epoch: {time.time() - start_time_epoch}")
+                #     sys.stdout.flush()
                 # record the time cost of each epoch
 
                 
