@@ -11,6 +11,7 @@ from scipy.optimize import minimize, OptimizeResult
 from typing import List, Callable
 from .utils import data_augmentation, EarlyStopping, reinitialize_network
 import time
+from .optimizer import Optimizer
 
 class TrainerModel(nn.Module):
     def __init__(self, layers: List[nn.Module] = None, name: str = None):
@@ -208,6 +209,140 @@ def NN_opt(func, x0, callback=None, **kwargs):
     res.fun = np.copy(optimal[1])
 
     return res
+
+def Hybrid_opt(func, x0, callback=None, **kwargs):
+
+    # logging
+    logger = logging.getLogger(__name__)
+    adapter = logging.LoggerAdapter(logger, {"run_id": kwargs["run_id"]})
+
+    para_size = len(x0)
+    res = OptimizeResult(nfev=0, nit=0)
+
+    # Default values
+    init_data = kwargs.get(
+        "init_data", [np.random.uniform(-10, 10, para_size) for _ in range(60)]
+    )
+    # max_iter = kwargs.get("max_iter", 20)
+    hybrid_iter = kwargs.get("hybrid_iter", 5)
+    classical_epochs = kwargs.get("classical_epochs", 20)
+    batch_size = kwargs.get("batch_size", 16)
+    verbose = kwargs.get("verbose", 0)
+    device = kwargs.get("device", "cpu")
+    nn_models = kwargs.get(
+        "NN_Models",
+        [
+            TrainerModel.default_model((para_size,)),
+        ],
+    )
+    patience = kwargs.get("patience", 5)
+    min_delta = kwargs.get("min_delta", 0.0)
+
+    sample_x = init_data
+    sample_y = [func(para) for para in sample_x]
+    optimal = [sample_x[np.argmin(sample_y)], np.min(sample_y)]
+    if verbose:
+        print(f"Training with the neural networks")
+    sys.stdout.flush()
+    # # embeding_data(sample_x, kwargs)
+    # sample_x = embeding_data(sample_x, kwargs)
+
+    for model in nn_models:
+        if verbose:
+            print(model)
+            sys.stdout.flush()
+
+        early_stop_epoch = []
+    
+        for iteration in range(hybrid_iter):
+            # res.nit += 1
+            if verbose:
+                print(
+                    f"Run ID: {kwargs['run_id']} for hybrid method, Iteration {iteration + 1}/{hybrid_iter}"
+                )
+                sys.stdout.flush()
+            data_loader = DataLoader(
+                list(zip(sample_x, sample_y)), batch_size=batch_size, shuffle=True
+            )
+            if kwargs.get("reinitialize_model", False):
+                reinitialize_network(model)
+                track=reinitialize_network(model)
+                if verbose:
+                    print(f"Run ID: {kwargs['run_id']}, Model reinitialized:{track}")  
+
+
+            model.train()
+            optimizer = optim.Adam(model.parameters(), lr=kwargs.get("lr", 1e-4))
+            if kwargs.get("use_scheduler", False):
+                scheduler_kwargs = kwargs.get("scheduler_kwargs", {})
+                scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+                    optimizer, **scheduler_kwargs)
+                
+
+            early_stopping = EarlyStopping(
+                patience=patience, min_delta=min_delta, verbose=verbose
+            )
+            best_model_state = None
+
+            for epoch in range(classical_epochs):
+
+                total_loss = model_train(model, data_loader, optimizer, device)
+                if kwargs.get("use_scheduler", False):
+                    scheduler.step(total_loss)
+                if early_stopping(total_loss):
+                    message = f"Iter {iteration+1}/{hybrid_iter}, Early stopping at epoch {epoch + 1}/{classical_epochs}, Best Loss: {early_stopping.best_loss:.1e}"
+                    if verbose:
+                        print(f"Run id {kwargs['run_id']}, {message}")
+                        sys.stdout.flush()
+                    adapter.info(message)
+                    early_stop_epoch.append(epoch)
+                    break
+
+
+                # TODO: test deepcopy time
+            
+                # start_time_deepcopy = time.time()
+                best_model_state = copy.deepcopy(model.state_dict()) if early_stopping.reset else best_model_state
+ 
+                
+        
+            # model.load_state_dict(best_model_state)
+            model.eval()
+            opt_x = optimal[0]+np.random.normal(0, 0.02, para_size)
+
+            backminimizer = BackMinimizer(model)
+
+            # data augmentation
+            new_data_x, new_data_y = data_augmentation(
+                opt_x, func, backminimizer, kwargs
+            )
+
+            sample_x += new_data_x
+            sample_y += new_data_y
+            optimal = [sample_x[np.argmin(sample_y)], np.min(sample_y)]
+        
+         
+          
+        adapter.info(f"Average early stopping epoch: {np.mean(early_stop_epoch)}")
+
+        optimer = Optimizer(method="BFGS")
+
+        result = optimer.optimize(
+            func,
+            optimal[0],
+            method="BFGS",
+            init_data=sample_x.copy(),
+            callback=callback,
+        )
+        sample_x += [result.x]
+        sample_y += [result.fun]
+        optimal = [sample_x[np.argmin(sample_y)], np.min(sample_y)]
+            
+    res.x = np.copy(optimal[0])
+    res.fun = np.copy(optimal[1])
+
+    return res
+
 
 
 def random_search(func, x0, callback=None, **kwargs):
