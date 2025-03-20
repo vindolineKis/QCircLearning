@@ -150,7 +150,7 @@ def NN_opt(func, x0, callback=None, **kwargs):
 
             for epoch in range(classical_epochs):
                 # record the time cost for each epoch
-                start_time_epoch = time.time()
+                # start_time_epoch = time.time()
                 total_loss = model_train(model, data_loader, optimizer, device)
                 if kwargs.get("use_scheduler", False):
                     scheduler.step(total_loss)
@@ -172,7 +172,7 @@ def NN_opt(func, x0, callback=None, **kwargs):
 
                 # TODO: test deepcopy time
             
-                start_time_deepcopy = time.time()
+                # start_time_deepcopy = time.time()
                 best_model_state = copy.deepcopy(model.state_dict()) if early_stopping.reset else best_model_state
                 # best_model_state = model.state_dict() if early_stopping.reset else best_model_state
                 # if verbose:
