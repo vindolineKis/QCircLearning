@@ -1,12 +1,21 @@
 import numpy as np
+from functools import wraps
+import torch
 
 
 def data_augment_periodic(data, n_points, shift):
     if n_points < 0:
         raise ValueError("n_points should be greater than 0")
     new_data = [data]
-    for _ in range(n_points):
-        new_data.append(data + np.random.choice([-1, 0, 1], len(data)) * shift)
+    # new_data = np.vstack(
+                #   [prediction0, prediction0 + np.pi * 2, prediction0 - np.pi * 2]
+                # )
+    for i in range(n_points):
+        new_data.append(data + shift)
+        new_data.append(data - shift)
+
+    # for _ in range(n_points):
+    #     new_data.append(data + np.random.choice([-1, 0, 1], len(data)) * shift)
     return new_data
 
 
@@ -20,6 +29,10 @@ def data_augmentation(data, circ_evaluate, backminimizer, config):
     if noise_augment_points < 0:
         raise ValueError("noise_augment_points should be greater than 0")
     periodic_augment_points = config.get("periodic_augment_points", 2)
+    
+    refine_x = backminimizer.back_minimize(
+        x0=data, method="L-BFGS-B", **config
+    )
 
     refine_x = backminimizer.back_minimize(
         x0=data, method="L-BFGS-B", **config
@@ -50,25 +63,38 @@ class EarlyStopping:
         self.verbose = verbose
         self.best_loss = None
         self.counter = 0
-        # self.early_stop = False
+        self.early_stop = False
 
     @property
     def reset(self):
         return self.counter == 0
 
+    def reset_state(self):
+        self.best_loss = None
+        self.counter = 0
+        self.early_stop = False
+
     def __call__(self, current_loss):
+        if current_loss is None or not isinstance(current_loss, (int, float)):
+            raise ValueError("current_loss must be a valid number.")
+        
         if self.best_loss is None:
             self.best_loss = current_loss
+            self.counter = 0
+            if self.verbose:
+                print(f"Initial loss set to {self.best_loss:.8f}")
         elif current_loss < self.best_loss - self.min_delta:
             self.best_loss = current_loss
             self.counter = 0
+            if self.verbose:
+                print(f"Validation loss improved to {self.best_loss:.8f}")
         else:
             self.counter += 1
             if self.verbose:
                 print(f"EarlyStopping counter: {self.counter}/{self.patience}")
-            if self.counter >= self.patience:
-                return True
-        return False
+        self.early_stop = self.counter >= self.patience
+        return self.early_stop
+
 
 
 def reinitialize_network(model):
@@ -81,3 +107,6 @@ def reinitialize_network(model):
     for module in model.modules():
         if hasattr(module, "reset_parameters"):
             module.reset_parameters()
+            return True
+    return False
+

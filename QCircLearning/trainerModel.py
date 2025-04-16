@@ -1,5 +1,6 @@
 import sys
 import copy
+import logging
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -9,7 +10,9 @@ from .back_minimizer import BackMinimizer
 from scipy.optimize import minimize, OptimizeResult
 from typing import List, Callable
 from .utils import data_augmentation, EarlyStopping, reinitialize_network
-
+import time
+from .optimizer import Optimizer
+import os
 
 class TrainerModel(nn.Module):
     def __init__(self, layers: List[nn.Module] = None, name: str = None):
@@ -22,11 +25,21 @@ class TrainerModel(nn.Module):
     def forward(self, x, y=None):
         pred = self.model(x)
         if y is not None:
-            loss = self.loss_fn(pred, y)
+            loss = self.loss_fn(pred, y.unsqueeze(-1))
             return loss
         else:
             return pred
+    # add methods to save and load the model
+    def save(self, path):
+        torch.save(self.state_dict(), path)
 
+    def load(self, path):
+        self.load_state_dict(torch.load(path))
+        self.eval()
+
+    def save_full(self, path):
+        torch.save(self, path)
+  
     def __str__(self):
         return f"TrainerModel(name={self.name}):\n{self.model}"
 
@@ -52,6 +65,8 @@ class TrainerModel(nn.Module):
 
 
 def model_train(model, data_loader, optimizer, device):
+    
+    model.to(device)
     model.train()
     total_loss = 0.0
 
@@ -62,12 +77,16 @@ def model_train(model, data_loader, optimizer, device):
         loss.backward()
         optimizer.step()
         total_loss += loss.item() * batch_y.size(0)
-
     total_loss /= len(data_loader.dataset)
     return total_loss
 
 
 def NN_opt(func, x0, callback=None, **kwargs):
+
+    # logging
+    logger = logging.getLogger(__name__)
+    adapter = logging.LoggerAdapter(logger, {"run_id": kwargs["run_id"]})
+
     para_size = len(x0)
     res = OptimizeResult(nfev=0, nit=0)
 
@@ -100,8 +119,9 @@ def NN_opt(func, x0, callback=None, **kwargs):
         if verbose:
             print(model)
             sys.stdout.flush()
+        early_stop_epoch = []
         for iteration in range(max_iter):
-            res.nit += 1
+            # res.nit += 1
             if verbose:
                 print(
                     f"Run ID: {kwargs['run_id']}, Iteration {iteration + 1}/{max_iter}"
@@ -110,30 +130,45 @@ def NN_opt(func, x0, callback=None, **kwargs):
             data_loader = DataLoader(
                 list(zip(sample_x, sample_y)), batch_size=batch_size, shuffle=True
             )
-            reinitialize_network(model)
+            if kwargs.get("reinitialize_model", False):
+                reinitialize_network(model)
+                track=reinitialize_network(model)
+                if verbose:
+                    print(f"Run ID: {kwargs['run_id']}, Model reinitialized:{track}")  
+
+
             model.train()
             optimizer = optim.Adam(model.parameters(), lr=kwargs.get("lr", 1e-4))
-            scheduler_kwargs = kwargs.get("scheduler_kwargs", {})
-            scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-                    optimizer, **scheduler_kwargs
-                    )
-            if verbose:
-                print(f"mode in scheduler: {scheduler.mode}")
-                print(f"Initial lr: {optimizer.param_groups[0]['lr']}")
-                sys.stdout.flush()
+            if kwargs.get("use_scheduler", False):
+                scheduler_kwargs = kwargs.get("scheduler_kwargs", {})
+                scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+                    optimizer, **scheduler_kwargs)
+                
+                if verbose:
+                    print(f"mode in scheduler: {scheduler.mode}")
+                    print(f"factor in scheduler: {scheduler.factor}")
+                    print(f"Initial lr: {optimizer.param_groups[0]['lr']}")
+                    print(f"patience in scheduler: {scheduler.patience}")
+                    sys.stdout.flush()
+
             early_stopping = EarlyStopping(
                 patience=patience, min_delta=min_delta, verbose=verbose
             )
             best_model_state = None
+
             for epoch in range(classical_epochs):
+                # record the time cost for each epoch
+                start_time_epoch = time.time()
                 total_loss = model_train(model, data_loader, optimizer, device)
-                scheduler.step(total_loss)
+                if kwargs.get("use_scheduler", False):
+                    scheduler.step(total_loss)
                 if early_stopping(total_loss):
+                    message = f"Iter {iteration+1}/{max_iter}, Early stopping at epoch {epoch + 1}/{classical_epochs}, Best Loss: {early_stopping.best_loss:.1e}"
                     if verbose:
-                        print(
-                            f"Early stopping at epoch {epoch + 1}/{classical_epochs}, Average Loss: {total_loss:.1e}"
-                        )
+                        print(f"Run id {kwargs['run_id']}, {message}")
                         sys.stdout.flush()
+                    adapter.info(message)
+                    early_stop_epoch.append(epoch)
                     break
                 if verbose:
                     print(f"current lr: {optimizer.param_groups[0]['lr']}")
@@ -141,19 +176,27 @@ def NN_opt(func, x0, callback=None, **kwargs):
                         f"Run ID: {kwargs['run_id']}, Epoch {epoch + 1}/{classical_epochs}, Average Loss: {total_loss:.1e}"
                     )
                     sys.stdout.flush()
-                
+            
+                start_time_deepcopy = time.time()
                 best_model_state = copy.deepcopy(model.state_dict()) if early_stopping.reset else best_model_state
-
-            # data augmentation
-            model.load_state_dict(best_model_state)
+                # best_model_state = model.state_dict() if early_stopping.reset else best_model_state
+                if verbose:
+                    print(f"Deepcopy time: {time.time() - start_time_deepcopy}")
+                    print(f"Time cost of each epoch: {time.time() - start_time_epoch}")
+                    sys.stdout.flush()
+                # record the time cost of each epoch
+        
+            # model.load_state_dict(best_model_state)
             model.eval()
-            opt_x = optimal[0]
+            opt_x = optimal[0]+np.random.normal(0, 0.02, para_size)
 
             backminimizer = BackMinimizer(model)
+
+            # data augmentation
             new_data_x, new_data_y = data_augmentation(
                 opt_x, func, backminimizer, kwargs
             )
-            res.nfev += kwargs.get("noise_augment_points", 0) + 1
+            # res.nfev += kwargs.get("noise_augment_points", 0) + 1
             # for pred in predictions:
             #     if not np.isfinite(func(pred)):  # Check if `func` can handle the augmented data
             #         print(f"Invalid prediction: {pred}")
@@ -162,10 +205,153 @@ def NN_opt(func, x0, callback=None, **kwargs):
             sample_y += new_data_y
             optimal = [sample_x[np.argmin(sample_y)], np.min(sample_y)]
 
+            # save the model state
+        model_name = model.name if hasattr(model, "name") else f"model_{kwargs['run_id']}"
+        save_dir = kwargs.get("save_path", "./saved_models")
+        os.makedirs(save_dir, exist_ok=True)
+        model_path = os.path.join(save_dir, f"{model_name}_state.pth")
+        model.save(model_path)
+        model.save_full(os.path.join(save_dir, f"{model_name}_full.pth"))
+
+        if verbose:
+            print(f"Model saved at {model_path}")
+            print(f"Run ID: {kwargs['run_id']}, Model state saved at {model_path}")
+            sys.stdout.flush()
+  
+
+        adapter.info(f"Average early stopping epoch: {np.mean(early_stop_epoch)}")
+
     res.x = np.copy(optimal[0])
     res.fun = np.copy(optimal[1])
 
     return res
+
+def Hybrid_opt(func, x0, callback=None, **kwargs):
+
+    # logging
+    logger = logging.getLogger(__name__)
+    adapter = logging.LoggerAdapter(logger, {"run_id": kwargs["run_id"]})
+
+    para_size = len(x0)
+    res = OptimizeResult(nfev=0, nit=0)
+
+    # Default values
+    init_data = kwargs.get(
+        "init_data", [np.random.uniform(-10, 10, para_size) for _ in range(60)]
+    )
+    # max_iter = kwargs.get("max_iter", 20)
+    hybrid_iter = kwargs.get("hybrid_iter", 5)
+    classical_epochs = kwargs.get("classical_epochs", 20)
+    batch_size = kwargs.get("batch_size", 16)
+    verbose = kwargs.get("verbose", 0)
+    device = kwargs.get("device", "cpu")
+    nn_models = kwargs.get(
+        "NN_Models",
+        [
+            TrainerModel.default_model((para_size,)),
+        ],
+    )
+    patience = kwargs.get("patience", 5)
+    min_delta = kwargs.get("min_delta", 0.0)
+
+    sample_x = init_data
+    sample_y = [func(para) for para in sample_x]
+    optimal = [sample_x[np.argmin(sample_y)], np.min(sample_y)]
+    if verbose:
+        print(f"Training with the neural networks")
+    sys.stdout.flush()
+
+
+    for model in nn_models:
+        if verbose:
+            print(model)
+            sys.stdout.flush()
+
+        early_stop_epoch = []
+    
+        for iteration in range(hybrid_iter):
+            # res.nit += 1
+            if verbose:
+                print(
+                    f"Run ID: {kwargs['run_id']} for hybrid method, Iteration {iteration + 1}/{hybrid_iter}"
+                )
+                sys.stdout.flush()
+            data_loader = DataLoader(
+                list(zip(sample_x, sample_y)), batch_size=batch_size, shuffle=True
+            )
+            if kwargs.get("reinitialize_model", False):
+                reinitialize_network(model)
+                track=reinitialize_network(model)
+                if verbose:
+                    print(f"Run ID: {kwargs['run_id']}, Model reinitialized:{track}")  
+
+
+            model.train()
+            optimizer = optim.Adam(model.parameters(), lr=kwargs.get("lr", 1e-4))
+            if kwargs.get("use_scheduler", False):
+                scheduler_kwargs = kwargs.get("scheduler_kwargs", {})
+                scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+                    optimizer, **scheduler_kwargs)
+                
+
+            early_stopping = EarlyStopping(
+                patience=patience, min_delta=min_delta, verbose=verbose
+            )
+            best_model_state = None
+
+            for epoch in range(classical_epochs):
+
+                total_loss = model_train(model, data_loader, optimizer, device)
+                if kwargs.get("use_scheduler", False):
+                    scheduler.step(total_loss)
+                if early_stopping(total_loss):
+                    message = f"Iter {iteration+1}/{hybrid_iter}, Early stopping at epoch {epoch + 1}/{classical_epochs}, Best Loss: {early_stopping.best_loss:.1e}"
+                    if verbose:
+                        print(f"Run id {kwargs['run_id']}, {message}")
+                        sys.stdout.flush()
+                    adapter.info(message)
+                    early_stop_epoch.append(epoch)
+                    break
+
+                best_model_state = copy.deepcopy(model.state_dict()) if early_stopping.reset else best_model_state
+ 
+            # model.load_state_dict(best_model_state)
+            model.eval()
+            opt_x = optimal[0]+np.random.normal(0, 0.02, para_size)
+
+            backminimizer = BackMinimizer(model)
+
+            # data augmentation
+            new_data_x, new_data_y = data_augmentation(
+                opt_x, func, backminimizer, kwargs
+            )
+
+            sample_x += new_data_x
+            sample_y += new_data_y
+            optimal = [sample_x[np.argmin(sample_y)], np.min(sample_y)]
+        
+         
+          
+        adapter.info(f"Average early stopping epoch: {np.mean(early_stop_epoch)}")
+
+        optimer = Optimizer(method="BFGS")
+
+        result = optimer.optimize(
+            func,
+            optimal[0],
+            method="BFGS",
+            init_data=sample_x.copy(),
+            callback=callback,
+        )
+        sample_x += [result.x]
+        sample_y += [result.fun]
+        optimal = [sample_x[np.argmin(sample_y)], np.min(sample_y)]
+            
+    res.x = np.copy(optimal[0])
+    res.fun = np.copy(optimal[1])
+
+    return res
+
 
 
 def random_search(func, x0, callback=None, **kwargs):
@@ -182,14 +368,14 @@ def random_search(func, x0, callback=None, **kwargs):
     optimal = [sample_x[np.argmin(sample_y)], np.min(sample_y)]
     if verbose:
         print("Training with random search")
-    sys.stdout.flush()
+        sys.stdout.flush()
 
     for _ in range(max_iter):
-        res.nit += 1
+        # res.nit += 1
 
         x0 = optimal[0] + np.random.normal(0, 0.02, para_size)
         y = func(x0)
-        res.nfev += 1
+        # res.nfev += 1
         sys.stdout.flush()
 
         if y < optimal[1]:
