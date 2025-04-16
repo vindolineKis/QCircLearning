@@ -12,6 +12,7 @@ from typing import List, Callable
 from .utils import data_augmentation, EarlyStopping, reinitialize_network
 import time
 from .optimizer import Optimizer
+import os
 
 class TrainerModel(nn.Module):
     def __init__(self, layers: List[nn.Module] = None, name: str = None):
@@ -28,7 +29,17 @@ class TrainerModel(nn.Module):
             return loss
         else:
             return pred
+    # add methods to save and load the model
+    def save(self, path):
+        torch.save(self.state_dict(), path)
 
+    def load(self, path):
+        self.load_state_dict(torch.load(path))
+        self.eval()
+
+    def save_full(self, path):
+        torch.save(self, path)
+  
     def __str__(self):
         return f"TrainerModel(name={self.name}):\n{self.model}"
 
@@ -182,7 +193,8 @@ def NN_opt(func, x0, callback=None, **kwargs):
                 #     sys.stdout.flush()
                 # record the time cost of each epoch
 
-                
+                # save the best model state
+                trained_model_state = model.state_dict()
         
             # model.load_state_dict(best_model_state)
             model.eval()
@@ -202,6 +214,20 @@ def NN_opt(func, x0, callback=None, **kwargs):
             sample_x += new_data_x
             sample_y += new_data_y
             optimal = [sample_x[np.argmin(sample_y)], np.min(sample_y)]
+
+            # save the model state
+        model_name = model.name if hasattr(model, "name") else f"model_{kwargs['run_id']}"
+        save_dir = kwargs.get("save_path", "./saved_models")
+        os.makedirs(save_dir, exist_ok=True)
+        model_path = os.path.join(save_dir, f"{model_name}_state.pth")
+        model.save(model_path)
+        model.save_full(os.path.join(save_dir, f"{model_name}_full.pth"))
+
+        if verbose:
+            print(f"Model saved at {model_path}")
+            print(f"Run ID: {kwargs['run_id']}, Model state saved at {model_path}")
+            sys.stdout.flush()
+  
 
         adapter.info(f"Average early stopping epoch: {np.mean(early_stop_epoch)}")
 
