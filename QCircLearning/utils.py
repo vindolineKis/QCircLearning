@@ -106,23 +106,3 @@ def reinitialize_network(model):
             return True
     return False
 
-
-# def embeding_data(data, config,layers=1):
-
-#     if config.get("embeding_data", False):
-
-#         def rz_embedding(theta, qubit):
-#             theta = theta.view(-1, 1, 1)
-#             cos = torch.cos(theta / 2)
-#             sin = torch.sin(theta / 2)
-#             return torch.cat([torch.cat([cos - 1j * sin, torch.zeros_like(cos)], dim=2),
-#                               torch.cat([torch.zeros_like(cos), cos + 1j * sin], dim=2)], dim=1)
-#         def ry_embedding(theta, qubit):
-#             theta = theta.view(-1, 1, 1)
-#             cos = torch.cos(theta / 2)
-#             sin = torch.sin(theta / 2)
-#             return torch.cat([torch.cat([cos, -sin], dim=2),
-#                               torch.cat([sin, cos], dim=2)], dim=1)
-#         for i in layers:
-            
-#     return data

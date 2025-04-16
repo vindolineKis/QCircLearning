@@ -114,16 +114,12 @@ def NN_opt(func, x0, callback=None, **kwargs):
     if verbose:
         print(f"Training with the neural networks")
     sys.stdout.flush()
-    # # embeding_data(sample_x, kwargs)
-    # sample_x = embeding_data(sample_x, kwargs)
 
     for model in nn_models:
         if verbose:
             print(model)
             sys.stdout.flush()
-
         early_stop_epoch = []
-        
         for iteration in range(max_iter):
             # res.nit += 1
             if verbose:
@@ -148,12 +144,12 @@ def NN_opt(func, x0, callback=None, **kwargs):
                 scheduler = optim.lr_scheduler.ReduceLROnPlateau(
                     optimizer, **scheduler_kwargs)
                 
-                # if verbose:
-                #     print(f"mode in scheduler: {scheduler.mode}")
-                #     print(f"factor in scheduler: {scheduler.factor}")
-                #     print(f"Initial lr: {optimizer.param_groups[0]['lr']}")
-                #     print(f"patience in scheduler: {scheduler.patience}")
-                #     sys.stdout.flush()
+                if verbose:
+                    print(f"mode in scheduler: {scheduler.mode}")
+                    print(f"factor in scheduler: {scheduler.factor}")
+                    print(f"Initial lr: {optimizer.param_groups[0]['lr']}")
+                    print(f"patience in scheduler: {scheduler.patience}")
+                    sys.stdout.flush()
 
             early_stopping = EarlyStopping(
                 patience=patience, min_delta=min_delta, verbose=verbose
@@ -162,7 +158,7 @@ def NN_opt(func, x0, callback=None, **kwargs):
 
             for epoch in range(classical_epochs):
                 # record the time cost for each epoch
-                # start_time_epoch = time.time()
+                start_time_epoch = time.time()
                 total_loss = model_train(model, data_loader, optimizer, device)
                 if kwargs.get("use_scheduler", False):
                     scheduler.step(total_loss)
@@ -174,27 +170,21 @@ def NN_opt(func, x0, callback=None, **kwargs):
                     adapter.info(message)
                     early_stop_epoch.append(epoch)
                     break
-                # if verbose:
-                #     print(f"current lr: {optimizer.param_groups[0]['lr']}")
-                #     print(
-                #         f"Run ID: {kwargs['run_id']}, Epoch {epoch + 1}/{classical_epochs}, Average Loss: {total_loss:.1e}"
-                #     )
-                #     sys.stdout.flush()
-
-
-                # TODO: test deepcopy time
+                if verbose:
+                    print(f"current lr: {optimizer.param_groups[0]['lr']}")
+                    print(
+                        f"Run ID: {kwargs['run_id']}, Epoch {epoch + 1}/{classical_epochs}, Average Loss: {total_loss:.1e}"
+                    )
+                    sys.stdout.flush()
             
-                # start_time_deepcopy = time.time()
+                start_time_deepcopy = time.time()
                 best_model_state = copy.deepcopy(model.state_dict()) if early_stopping.reset else best_model_state
                 # best_model_state = model.state_dict() if early_stopping.reset else best_model_state
-                # if verbose:
-                #     print(f"Deepcopy time: {time.time() - start_time_deepcopy}")
-                #     print(f"Time cost of each epoch: {time.time() - start_time_epoch}")
-                #     sys.stdout.flush()
+                if verbose:
+                    print(f"Deepcopy time: {time.time() - start_time_deepcopy}")
+                    print(f"Time cost of each epoch: {time.time() - start_time_epoch}")
+                    sys.stdout.flush()
                 # record the time cost of each epoch
-
-                # save the best model state
-                trained_model_state = model.state_dict()
         
             # model.load_state_dict(best_model_state)
             model.eval()
@@ -270,8 +260,7 @@ def Hybrid_opt(func, x0, callback=None, **kwargs):
     if verbose:
         print(f"Training with the neural networks")
     sys.stdout.flush()
-    # # embeding_data(sample_x, kwargs)
-    # sample_x = embeding_data(sample_x, kwargs)
+
 
     for model in nn_models:
         if verbose:
@@ -324,14 +313,8 @@ def Hybrid_opt(func, x0, callback=None, **kwargs):
                     early_stop_epoch.append(epoch)
                     break
 
-
-                # TODO: test deepcopy time
-            
-                # start_time_deepcopy = time.time()
                 best_model_state = copy.deepcopy(model.state_dict()) if early_stopping.reset else best_model_state
  
-                
-        
             # model.load_state_dict(best_model_state)
             model.eval()
             opt_x = optimal[0]+np.random.normal(0, 0.02, para_size)
