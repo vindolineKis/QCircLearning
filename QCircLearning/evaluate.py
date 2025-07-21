@@ -59,6 +59,7 @@ def gate_fidelity_qiskit(U:Operator,V:Operator):
     return process_fidelity(U,V)
 
 def gate_fidelity_circuit(U:QuantumCircuit,V:QuantumCircuit):
+    
     circ = transpile(fid_circuit(U,V),simulator)
     result = simulator.run(circ).result()
     return result.data()['probabilities'][0]*2-1

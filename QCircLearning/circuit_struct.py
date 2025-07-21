@@ -1,5 +1,9 @@
 from qiskit.circuit.library import EfficientSU2
 from qiskit.circuit import QuantumCircuit, QuantumRegister, AncillaRegister,ClassicalRegister, Parameter, ParameterVector
+import numpy as np
+
+
+BIAS_STRENGTH = 1
 
 def simple_circ(qc:QuantumCircuit):
     qubits = qc.qubits
@@ -25,7 +29,77 @@ def one_layer(qc:QuantumCircuit):
 
     return qc, para
 
-def addition_layer(qc:QuantumCircuit, para = None):
+def addition_layer(qc:QuantumCircuit, para = None, bias_strength=BIAS_STRENGTH):
+    qubits = qc.qubits
+    print(f"bias_strengt at circuits: {bias_strength}")
+    n = qc.num_qubits
+    if para is None:
+        para = ParameterVector('θ', 2*n).params
+
+    for i in range(n//2):
+        qc.cx(qubits[i*2],qubits[i*2+1])
+    for i in range((n-1)//2):
+        qc.cx(qubits[i*2+1],qubits[i*2+2])
+    qc.barrier()
+    for i in range(n):
+        epsilon_ry = np.random.normal(0, bias_strength)
+        epsilon_rz = np.random.normal(0, bias_strength*0.0001)
+        epsilon_rx = np.random.normal(0, bias_strength)
+        qc.rz(epsilon_rz,qubits[i])#rz noise
+        qc.ry(para[i*2]+epsilon_ry,qubits[i]) #noisy ry
+        qc.rx(epsilon_rx,qubits[i])# rx noise
+
+        qc.ry(epsilon_ry, qubits[i])
+        qc.rz(para[i*2+1]+epsilon_rz,qubits[i])
+        qc.rx(epsilon_rx, qubits[i])
+
+
+    return qc, para
+
+def multi_layer(qc:QuantumCircuit, layers:int=1, bias_strength=BIAS_STRENGTH):
+    print(f"bias_strength at circuits: {bias_strength}")
+
+    qubits = qc.qubits
+    n = qc.num_qubits
+    para = ParameterVector('θ', 2*n*layers + 3*n).params
+
+    for i in range(n):
+        # add rx, ry noise to noisy rz gate
+        epsilon_rx1 = np.random.normal(0, bias_strength)
+        epsilon_ry1 = np.random.normal(0, bias_strength)
+        epsilon_rz1 = np.random.normal(0, bias_strength*0.0001)
+        qc.rx(epsilon_rx1,qubits[i])#rx noise
+        qc.ry(epsilon_ry1,qubits[i]) #noisy ry
+        qc.rz(para[i*3]+epsilon_rz1,qubits[i])
+
+        epsilon_rx2 = np.random.normal(0, bias_strength)
+        epsilon_ry2 = np.random.normal(0, bias_strength)
+        epsilon_rz2 = np.random.normal(0, bias_strength*0.0001)
+        qc.rx(epsilon_rx2,qubits[i])#rx noise
+        qc.rz(epsilon_rz2,qubits[i])#rz noise
+        qc.ry(para[i*3+1]+epsilon_ry2,qubits[i])
+        
+        epsilon_rx3 = np.random.normal(0, bias_strength)
+        epsilon_ry3 = np.random.normal(0, bias_strength)
+        epsilon_rz3 = np.random.normal(0, bias_strength*0.0001)
+        qc.rx(epsilon_rx3,qubits[i])#rx noise
+        qc.ry(epsilon_ry3,qubits[i]) #noisy ry
+        qc.rz(para[i*3+2]+epsilon_rz3,qubits[i])
+    qc.barrier()
+
+    for i in range(layers):
+        qc, qubits = addition_layer(qc, para[i*2*n + 3*n:(i+1)*2*n + 3*n])
+
+    para = qc.parameters
+
+    return qc, para
+
+def one_layer_pure(qc:QuantumCircuit):
+    qc, para = multi_layer_pure(qc, 1)
+
+    return qc, para
+
+def addition_layer_pure(qc:QuantumCircuit, para = None):
     qubits = qc.qubits
 
     n = qc.num_qubits
@@ -43,7 +117,7 @@ def addition_layer(qc:QuantumCircuit, para = None):
 
     return qc, para
 
-def multi_layer(qc:QuantumCircuit, layers:int=1):
+def multi_layer_pure(qc:QuantumCircuit, layers:int=1):
 
     qubits = qc.qubits
     n = qc.num_qubits
@@ -56,7 +130,7 @@ def multi_layer(qc:QuantumCircuit, layers:int=1):
     qc.barrier()
 
     for i in range(layers):
-        qc, qubits = addition_layer(qc, para[i*2*n + 3*n:(i+1)*2*n + 3*n])
+        qc, qubits = addition_layer_pure(qc, para[i*2*n + 3*n:(i+1)*2*n + 3*n])
 
     para = qc.parameters
 
@@ -106,7 +180,8 @@ class VCircuitConstructor:
         return {
             'circuit': qc,
             'qubits': qubits,
-            'para': para
+            'para': para,
+    
         }
     
     @staticmethod
