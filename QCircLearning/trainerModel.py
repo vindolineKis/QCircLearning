@@ -53,6 +53,8 @@ class TrainerModel(nn.Module):
 
 
 def model_train(model, data_loader, optimizer, device):
+    
+    model.to(device)
     model.train()
     total_loss = 0.0
 
@@ -63,7 +65,6 @@ def model_train(model, data_loader, optimizer, device):
         loss.backward()
         optimizer.step()
         total_loss += loss.item() * batch_y.size(0)
-
     total_loss /= len(data_loader.dataset)
     return total_loss
 
