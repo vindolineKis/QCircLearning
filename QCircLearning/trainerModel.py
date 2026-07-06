@@ -11,6 +11,8 @@ from scipy.optimize import minimize, OptimizeResult
 from typing import List, Callable
 from .utils import data_augmentation, EarlyStopping, reinitialize_network
 import time
+from cmaes import CMA
+
 
 class TrainerModel(nn.Module):
     def __init__(self, layers: List[nn.Module] = None, name: str = None):
@@ -217,30 +219,148 @@ def random_search(func, x0, callback=None, **kwargs):
     init_data = kwargs.get(
         "init_data", [np.random.uniform(-10, 10, para_size) for _ in range(60)]
     )
-    max_iter = kwargs.get("max_iter", 20)
+
+    max_iter = kwargs.get("max_iter", kwargs.get("maxiter", 20))
     verbose = kwargs.get("verbose", 0)
-    sample_x = init_data
+
+    sample_x = list(copy.deepcopy(init_data))
     sample_y = [func(para) for para in sample_x]
-    optimal = [sample_x[np.argmin(sample_y)], np.min(sample_y)]
+
+    best_idx = int(np.argmin(sample_y))
+    optimal = [np.array(sample_x[best_idx]).copy(), float(sample_y[best_idx])]
+
     if verbose:
         print("Training with random search")
         sys.stdout.flush()
 
     for _ in range(max_iter):
-        # res.nit += 1
+        x_new = optimal[0] + np.random.normal(0, 0.02, para_size)
+        y_new = func(x_new)
 
-        x0 = optimal[0] + np.random.normal(0, 0.02, para_size)
-        y = func(x0)
-        # res.nfev += 1
-        sys.stdout.flush()
+        if y_new < optimal[1]:
+            optimal = [x_new.copy(), float(y_new)]
 
-        if y < optimal[1]:
-            optimal = [x0, y]
+        sample_x.append(x_new.copy())
+        sample_y.append(float(y_new))
 
-        sample_x += [x0]
-        sample_y += [y]
+        if callback is not None:
+            callback(x_new)
 
     res.x = np.copy(optimal[0])
-    res.fun = np.copy(optimal[1])
+    res.fun = float(optimal[1])
+    res.nit = max_iter
+    res.nfev = len(sample_y)
+    res.success = True
+    res.message = "Random search finished."
 
     return res
+
+
+def minimize_cmaes(
+    func,
+    x0,
+    callback=None,
+    sigma=0.5,
+    maxiter=None,
+    population_size=None,
+    **kwargs
+):
+    x0 = np.asarray(x0, dtype=float)
+
+    if maxiter is None:
+        maxiter = kwargs.get("max_iter", 100)
+
+    if population_size is None:
+        optimizer = CMA(mean=x0, sigma=sigma)
+    else:
+        optimizer = CMA(mean=x0, sigma=sigma, population_size=population_size)
+
+    best_x = x0.copy()
+    best_y = func(best_x)
+    nfev = 1
+
+    for _ in range(maxiter):
+        solutions = []
+
+        for _ in range(optimizer.population_size):
+            x = optimizer.ask()
+            y = func(x)
+            nfev += 1
+
+            solutions.append((x, y))
+
+            if y < best_y:
+                best_x = x.copy()
+                best_y = float(y)
+
+        optimizer.tell(solutions)
+
+        if callback is not None:
+            callback(best_x)
+
+    return OptimizeResult(
+        x=best_x.copy(),
+        fun=float(best_y),
+        nit=maxiter,
+        nfev=nfev,
+        success=True,
+        message="CMA-ES finished."
+    )
+
+
+def minimize_spsa(
+    func,
+    x0,
+    callback=None,
+    maxiter=None,
+    a=0.1,
+    c=0.1,
+    A=10.0,
+    alpha=0.602,
+    gamma=0.101,
+    **kwargs
+):
+    if maxiter is None:
+        maxiter = kwargs.get("max_iter", 200)
+
+    x = np.asarray(x0, dtype=float).copy()
+
+    best_x = x.copy()
+    best_y = func(x)
+    nfev = 1
+
+    for k in range(maxiter):
+        ak = a / ((k + 1 + A) ** alpha)
+        ck = c / ((k + 1) ** gamma)
+
+        delta = np.random.choice([-1.0, 1.0], size=x.shape)
+
+        x_plus = x + ck * delta
+        x_minus = x - ck * delta
+
+        y_plus = func(x_plus)
+        y_minus = func(x_minus)
+        nfev += 2
+
+        ghat = (y_plus - y_minus) / (2.0 * ck * delta)
+
+        x = x - ak * ghat
+
+        y = func(x)
+        nfev += 1
+
+        if y < best_y:
+            best_x = x.copy()
+            best_y = float(y)
+
+        if callback is not None:
+            callback(x)
+
+    return OptimizeResult(
+        x=best_x.copy(),
+        fun=float(best_y),
+        nit=maxiter,
+        nfev=nfev,
+        success=True,
+        message="SPSA finished."
+    )
