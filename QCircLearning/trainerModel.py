@@ -364,3 +364,150 @@ def minimize_spsa(
         success=True,
         message="SPSA finished."
     )
+
+def minimize_smo(
+    func,
+    x0,
+    callback=None,
+    maxiter=None,
+    tol=1e-8,
+    order="cyclic",
+    wrap_angles=True,
+    reestimate_every=None,
+    **kwargs
+):
+    """
+    Single-parameter SMO optimizer for periodic parametrized circuits.
+
+    Assumption:
+    With all other parameters fixed, the objective as a function of one
+    parameter is approximately of the form
+
+        f(theta_j) = A cos(theta_j) + B sin(theta_j) + C
+
+    which is the standard setting for Pauli-rotation-based variational circuits.
+
+    Parameters
+    ----------
+    func : callable
+        Objective function.
+    x0 : array-like
+        Initial point.
+    callback : callable or None
+        callback(xk)
+    maxiter : int or None
+        Number of sweeps over all parameters.
+    tol : float
+        Stop if improvement per sweep is below tol.
+    order : str
+        "cyclic" or "random"
+    wrap_angles : bool
+        Whether to wrap parameters into [0, 2*pi).
+    reestimate_every : int or None
+        Re-evaluate current best point every fixed number of parameter updates
+        to reduce accumulated fitting error in noisy settings.
+
+    Returns
+    -------
+    OptimizeResult
+    """
+    if maxiter is None:
+        maxiter = kwargs.get("max_iter", 50)
+
+    x = np.asarray(x0, dtype=float).copy()
+
+    def maybe_wrap(v):
+        return np.mod(v, 2 * np.pi) if wrap_angles else v
+
+    x = maybe_wrap(x)
+    dim = len(x)
+
+    best_x = x.copy()
+    best_y = func(best_x)
+    nfev = 1
+    nit = 0
+    step_counter = 0
+
+    def smo_single_step(x_current, j):
+        theta0 = x_current[j]
+
+        x_base = x_current.copy()
+        x_plus = x_current.copy()
+        x_minus = x_current.copy()
+
+        x_plus[j] = theta0 + np.pi / 2
+        x_minus[j] = theta0 - np.pi / 2
+
+        x_plus = maybe_wrap(x_plus)
+        x_minus = maybe_wrap(x_minus)
+
+        f0 = func(x_base)
+        f_plus = func(x_plus)
+        f_minus = func(x_minus)
+
+        # Recover f(theta) = A cos(theta) + B sin(theta) + C
+        C = 0.5 * (f_plus + f_minus)
+        A = f0 - C
+        B = 0.5 * (f_minus - f_plus)
+
+        amp = np.hypot(A, B)
+
+        # Flat direction: skip update
+        if amp < 1e-12:
+            return x_current.copy(), float(f0), 3
+
+        phi = np.arctan2(B, A)
+        theta_star = phi + np.pi  # minimizer of r cos(theta - phi) + C
+
+        x_new = x_current.copy()
+        x_new[j] = theta_star
+        x_new = maybe_wrap(x_new)
+
+        f_new = func(x_new)
+
+        return x_new, float(f_new), 4
+
+    for sweep in range(maxiter):
+        y_before = best_y
+
+        if order == "random":
+            indices = np.random.permutation(dim)
+        else:
+            indices = range(dim)
+
+        for j in indices:
+            x_new, y_new, evals = smo_single_step(best_x, j)
+            nfev += evals
+            step_counter += 1
+
+            if y_new <= best_y:
+                best_x = x_new
+                best_y = y_new
+
+            if callback is not None:
+                callback(best_x)
+
+            if reestimate_every is not None and step_counter % reestimate_every == 0:
+                best_y = float(func(best_x))
+                nfev += 1
+
+        nit += 1
+
+        if y_before - best_y < tol:
+            return OptimizeResult(
+                x=best_x.copy(),
+                fun=float(best_y),
+                nit=nit,
+                nfev=nfev,
+                success=True,
+                message="SMO converged."
+            )
+
+    return OptimizeResult(
+        x=best_x.copy(),
+        fun=float(best_y),
+        nit=nit,
+        nfev=nfev,
+        success=True,
+        message="SMO reached maxiter."
+    )
